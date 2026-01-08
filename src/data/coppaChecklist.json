@@ -1,0 +1,37 @@
+[
+  {
+    "area": "Area 1",
+    "item": "Programme Objectives & Learning Outcomes",
+    "owner": "Programme Owner"
+  },
+  {
+    "area": "Area 2",
+    "item": "Assessment of Student Learning",
+    "owner": "Programme Owner"
+  },
+  {
+    "area": "Area 3",
+    "item": "Student Selection & Support",
+    "owner": "HEP"
+  },
+  {
+    "area": "Area 4",
+    "item": "Academic Staff",
+    "owner": "Programme Owner"
+  },
+  {
+    "area": "Area 5",
+    "item": "Educational Resources",
+    "owner": "IPPT"
+  },
+  {
+    "area": "Area 6",
+    "item": "Programme Management",
+    "owner": "IPPT"
+  },
+  {
+    "area": "Area 7",
+    "item": "Monitoring, Review & CQI",
+    "owner": "Programme Owner"
+  }
+]
