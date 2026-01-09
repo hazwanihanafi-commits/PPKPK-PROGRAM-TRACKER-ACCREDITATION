@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>PPKPK – SRR Programme Dashboard</title>
+<title>PPKPK – Programme SRR Dashboard</title>
 
 <style>
 body{
@@ -10,6 +10,8 @@ body{
   background:#f6f8fb;
   padding:24px;
 }
+
+h2{margin-bottom:20px}
 
 .grid{
   display:grid;
@@ -25,15 +27,20 @@ body{
 }
 
 .badge{
+  display:inline-block;
   padding:4px 12px;
   border-radius:20px;
   font-size:12px;
+  margin:6px 0;
 }
 
 .ready{background:#e6fff0;color:#047857}
 .not{background:#ffecec;color:#991b1b}
 
-button{padding:6px 12px;cursor:pointer}
+button{
+  padding:6px 12px;
+  cursor:pointer;
+}
 
 /* MODAL */
 #modal{
@@ -47,7 +54,7 @@ button{padding:6px 12px;cursor:pointer}
 
 .modal-box{
   background:white;
-  max-width:1000px;
+  max-width:1100px;
   margin:auto;
   padding:20px;
   border-radius:14px;
@@ -98,13 +105,17 @@ button{padding:6px 12px;cursor:pointer}
   height:100%;
   background:#22c55e;
 }
+
+.item{
+  border-bottom:1px solid #eee;
+  padding:10px 0;
+}
 </style>
 </head>
 
 <body>
 
 <h2>📘 PPKPK – Programme SRR Dashboard</h2>
-
 <div id="programmeGrid" class="grid"></div>
 
 <!-- PROGRAMME MODAL -->
@@ -113,9 +124,9 @@ button{padding:6px 12px;cursor:pointer}
     <h3 id="modalTitle"></h3>
 
     <div class="tabs">
-      <button onclick="showTab('overview')" class="active">Overview</button>
+      <button class="active" onclick="showTab('overview')">Overview</button>
       <button onclick="showTab('students')">Students</button>
-      <button onclick="showTab('coppa')">COPPA Evidence</button>
+      <button onclick="showTab('coppa')">COPPA / Documents</button>
     </div>
 
     <div id="overviewTab"></div>
@@ -128,28 +139,31 @@ button{padding:6px 12px;cursor:pointer}
 </div>
 
 <script>
-/* ===================== CONFIG ===================== */
-const STUDENT_API = "STUDENT_MASTER_API_URL";
+/* ================= CONFIG ================= */
+const STUDENT_API =
+"https://script.google.com/macros/s/AKfycbzveYXbtD0_WdOmaX5pXapE4mBZoT9lsMlLSi7nM8iGyErZ69WjJKRoBre9Wy6MTjXbkg/exec";
+
 const APPENDIX_API =
- "https://script.google.com/macros/s/AKfycbzzfNBLau1GPNucFLHvLUc_78B5M21SbE2AYYzbIA6QOLucZ8KDHQeAtM01U90V3kPvSw/exec";
+"https://script.google.com/macros/s/AKfycbzzfNBLau1GPNucFLHvLUc_78B5M21SbE2AYYzbIA6QOLucZ8KDHQeAtM01U90V3kPvSw/exec";
 
 let students = [];
 let appendix = [];
 let currentProgram = "";
 
-/* ===================== LOAD DATA ===================== */
+/* ================= LOAD ALL ================= */
 async function loadAll(){
   students = await (await fetch(STUDENT_API)).json();
   appendix = await (await fetch(APPENDIX_API)).json();
   renderPrograms();
 }
 
-/* ===================== MAIN DASHBOARD ===================== */
+/* ================= MAIN DASHBOARD ================= */
 function renderPrograms(){
   const programs = {};
 
   students.forEach(s=>{
     const p = s["PROGRAM AKADEMIK"];
+    if(!p) return;
     if(!programs[p]) programs[p]={students:[]};
     programs[p].students.push(s);
   });
@@ -158,7 +172,9 @@ function renderPrograms(){
   grid.innerHTML="";
 
   Object.entries(programs).forEach(([name,p])=>{
-    const grads = p.students.filter(s=>s["STATUS PENGAJIAN"]==="BERIJAZAH").length;
+    const grads = p.students.filter(
+      s=>s["STATUS PENGAJIAN"]==="BERIJAZAH"
+    ).length;
 
     grid.innerHTML+=`
       <div class="card">
@@ -175,7 +191,7 @@ function renderPrograms(){
   });
 }
 
-/* ===================== MODAL ===================== */
+/* ================= MODAL ================= */
 function openProgramme(program){
   currentProgram = program;
   document.getElementById("modalTitle").innerText = program;
@@ -200,28 +216,37 @@ function showTab(tab){
   event.target.classList.add("active");
 }
 
-/* ===================== OVERVIEW ===================== */
+/* ================= OVERVIEW ================= */
 function loadOverview(){
-  const list = students.filter(s=>s["PROGRAM AKADEMIK"]===currentProgram);
-  const aktif = list.filter(s=>s["STATUS PENGAJIAN"]==="AKTIF").length;
-  const grad = list.filter(s=>s["STATUS PENGAJIAN"]==="BERIJAZAH").length;
+  const list = students.filter(
+    s=>s["PROGRAM AKADEMIK"]===currentProgram
+  );
+  const aktif = list.filter(
+    s=>s["STATUS PENGAJIAN"]==="AKTIF"
+  ).length;
+  const grad = list.filter(
+    s=>s["STATUS PENGAJIAN"]==="BERIJAZAH"
+  ).length;
 
   document.getElementById("overviewTab").innerHTML=`
     <p><b>Aktif:</b> ${aktif}</p>
     <p><b>Graduan:</b> ${grad}</p>
+    <p><b>Jumlah Pelajar:</b> ${list.length}</p>
   `;
 }
 
-/* ===================== STUDENTS ===================== */
+/* ================= STUDENTS ================= */
 function loadStudents(){
-  const list = students.filter(s=>s["PROGRAM AKADEMIK"]===currentProgram);
+  const list = students.filter(
+    s=>s["PROGRAM AKADEMIK"]===currentProgram
+  );
   document.getElementById("studentsTab").innerHTML =
     list.map(s=>`
-      <p>👤 ${s["NAMA PELAJAR"]} – ${s["STATUS PENGAJIAN"]}</p>
+      <p>👤 ${s["NAMA PELAJAR"]} — ${s["STATUS PENGAJIAN"]}</p>
     `).join("");
 }
 
-/* ===================== COPPA ===================== */
+/* ================= COPPA ================= */
 function loadCoppa(){
   const areas={};
   appendix.forEach(a=>{
@@ -232,10 +257,12 @@ function loadCoppa(){
   document.getElementById("coppaTab").innerHTML =
     `<div class="area-grid">${
       Object.entries(areas).map(([area,items])=>{
-        const done = items.filter(i=>i.STATUS==="COMPLETE").length;
+        const done = items.filter(
+          i=>i.STATUS==="COMPLETE"
+        ).length;
         const pct = Math.round(done/items.length*100);
         return `
-          <div class="area-card">
+          <div class="area-card" onclick="openArea('${area}')">
             <b>${area}</b>
             <div>${done}/${items.length} COMPLETE</div>
             <div class="progress">
@@ -245,6 +272,51 @@ function loadCoppa(){
         `;
       }).join("")
     }</div>`;
+}
+
+function openArea(area){
+  const list = appendix.filter(a=>a.APPENDIX===area);
+  document.getElementById("coppaTab").innerHTML =
+    `<h4>${area}</h4>${
+      list.map(a=>`
+        <div class="item">
+          <b>${a["NO APPENDIX"]}</b> – ${a.ITEM}<br>
+          PIC: ${a.PIC_ROLE}<br><br>
+          <label>
+            <input type="checkbox"
+              ${a.STATUS==="COMPLETE"?"checked":""}
+              onchange="updateStatus('${a["NO APPENDIX"]}',this.checked)">
+            COMPLETE
+          </label><br><br>
+          <input type="text"
+            placeholder="Paste Google Drive link"
+            value="${a.DOC_LINK||""}"
+            onchange="updateLink('${a["NO APPENDIX"]}',this.value)">
+        </div>
+      `).join("")
+    }`;
+}
+
+async function updateStatus(noAppendix,checked){
+  await fetch(APPENDIX_API,{
+    method:"POST",
+    body:JSON.stringify({
+      appendix:noAppendix,
+      status: checked?"COMPLETE":"NOT STARTED"
+    })
+  });
+  loadCoppa();
+}
+
+async function updateLink(noAppendix,link){
+  await fetch(APPENDIX_API,{
+    method:"POST",
+    body:JSON.stringify({
+      appendix:noAppendix,
+      status:"COMPLETE",
+      doc_link:link
+    })
+  });
 }
 
 loadAll();
