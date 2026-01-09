@@ -169,9 +169,14 @@ async function loadProgrammeDashboard() {
       };
     }
 
-    // team members = other lecturers in same programme
-    if (row["PENYELIA UTAMA"])
-      programmes[prog].team.add(row["PENYELIA UTAMA"]);
+    // team members = other lecturers EXCEPT Ketua Program
+const ketua = row["KETUA PROGRAM"];
+const penyelia = row["PENYELIA UTAMA"];
+
+if (penyelia && penyelia !== ketua) {
+  programmes[prog].team.add(penyelia);
+}
+
 
     // student status (if present)
     if (row["STATUS PENGAJIAN"]) {
