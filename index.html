@@ -1,1 +1,50 @@
-<!doctype html><html><body><div id='root'></div><script type='module' src='/src/main.jsx'></script></body></html>
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>SRR Readiness Dashboard</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+      background: #f9f9f9;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: white;
+    }
+    th, td {
+      border: 1px solid #ccc;
+      padding: 8px;
+      text-align: left;
+    }
+    th {
+      background: #eaeaea;
+    }
+    tr.ready {
+      background-color: #e6ffe6;
+    }
+  </style>
+</head>
+<body>
+
+<h2>SRR Readiness Dashboard</h2>
+<p>Tick <b>Ready for SRR</b> to update Google Sheet automatically.</p>
+
+<table id="srrTable">
+  <thead>
+    <tr>
+      <th>No Matrik</th>
+      <th>Nama Pelajar</th>
+      <th>Program Akademik</th>
+      <th>Status Pengajian</th>
+      <th>Ready for SRR</th>
+    </tr>
+  </thead>
+  <tbody></tbody>
+</table>
+
+<script src="script.js"></script>
+</body>
+</html>
