@@ -1,147 +1,213 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <meta charset="UTF-8">
-  <title>Programme SRR Dashboard</title>
+<meta charset="UTF-8" />
+<title>Programme SRR Dashboard</title>
 
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      background: #f6f8fb;
-      padding: 24px;
-    }
+<style>
+body{
+  font-family: Arial, sans-serif;
+  background:#f6f8fb;
+  padding:24px;
+}
 
-    h2 { margin-bottom: 8px; }
-    .area {
-      background: white;
-      border-radius: 10px;
-      padding: 16px;
-      margin-bottom: 16px;
-      box-shadow: 0 4px 10px rgba(0,0,0,0.06);
-    }
+h2{ margin-bottom:16px }
 
-    .area h3 {
-      cursor: pointer;
-      margin: 0;
-    }
+.area-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fill,minmax(320px,1fr));
+  gap:16px;
+}
 
-    .appendix {
-      display: none;
-      margin-top: 12px;
-    }
+.area-card{
+  background:white;
+  border-radius:12px;
+  padding:16px;
+  box-shadow:0 4px 10px rgba(0,0,0,.08);
+  cursor:pointer;
+}
 
-    .row {
-      display: grid;
-      grid-template-columns: 120px 1fr 120px 120px 80px;
-      gap: 8px;
-      padding: 6px 0;
-      border-bottom: 1px solid #eee;
-      font-size: 13px;
-    }
+.progress{
+  height:8px;
+  background:#eee;
+  border-radius:6px;
+  overflow:hidden;
+  margin:10px 0;
+}
 
-    .row input[type="checkbox"] {
-      transform: scale(1.2);
-    }
+.progress-bar{
+  height:100%;
+  background:#22c55e;
+  width:0%;
+}
 
-    .progress {
-      background: #eee;
-      border-radius: 10px;
-      overflow: hidden;
-      height: 10px;
-      margin-top: 6px;
-    }
+.badge{
+  font-size:12px;
+  padding:4px 10px;
+  border-radius:20px;
+}
 
-    .progress-bar {
-      height: 10px;
-      background: #22c55e;
-      width: 0%;
-    }
-  </style>
+.complete{ background:#e6fff0; color:#007a3d }
+.not{ background:#ffecec; color:#b00020 }
+
+/* MODAL */
+#modal{
+  display:none;
+  position:fixed;
+  inset:0;
+  background:rgba(0,0,0,.5);
+  padding:30px;
+}
+
+.modal-box{
+  background:white;
+  max-width:900px;
+  margin:auto;
+  padding:20px;
+  border-radius:12px;
+  max-height:85vh;
+  overflow:auto;
+}
+
+.item{
+  border-bottom:1px solid #eee;
+  padding:10px 0;
+}
+
+.item input[type=text]{
+  width:60%;
+}
+
+button{
+  padding:6px 10px;
+  cursor:pointer;
+}
+</style>
 </head>
 
 <body>
 
-<h2 id="progName">Programme</h2>
-<div id="areas"></div>
+<h2 id="progTitle">Programme Dashboard</h2>
+
+<div class="area-grid" id="areaGrid"></div>
+
+<!-- MODAL -->
+<div id="modal">
+  <div class="modal-box">
+    <h3 id="modalTitle"></h3>
+    <div id="itemList"></div>
+    <br>
+    <button onclick="closeModal()">Close</button>
+  </div>
+</div>
 
 <script>
 const API_URL =
-  "https://script.google.com/macros/s/AKfycbzzfNBLau1GPNucFLHvLUc_78B5M21SbE2AYYzbIA6QOLucZ8KDHQeAtM01U90V3kPvSw/exec";
+"https://script.google.com/macros/s/AKfycbzzfNBLau1GPNucFLHvLUc_78B5M21SbE2AYYzbIA6QOLucZ8KDHQeAtM01U90V3kPvSw/exec";
 
-const programName =
-  new URLSearchParams(window.location.search).get("program");
+let appendixData = [];
+let currentArea = "";
 
-document.getElementById("progName").innerText = programName;
-
-async function loadAppendix() {
+async function loadData(){
   const res = await fetch(API_URL);
-  const data = await res.json();
+  appendixData = await res.json();
+  renderAreas();
+}
 
-  const filtered = data.filter(r =>
-    r["PROGRAM"] === programName || !r["PROGRAM"]
-  );
-
-  const grouped = {};
-  filtered.forEach(r => {
-    const area = r["APPENDIX"];
-    if (!grouped[area]) grouped[area] = [];
-    grouped[area].push(r);
+function renderAreas(){
+  const areas = {};
+  appendixData.forEach(a=>{
+    if(!areas[a.APPENDIX]) areas[a.APPENDIX]=[];
+    areas[a.APPENDIX].push(a);
   });
 
-  const container = document.getElementById("areas");
+  const grid = document.getElementById("areaGrid");
+  grid.innerHTML="";
 
-  Object.entries(grouped).forEach(([area, rows]) => {
-    const completed = rows.filter(r => r["STATUS"] === "COMPLETE").length;
-    const percent = Math.round((completed / rows.length) * 100);
+  Object.entries(areas).forEach(([area,items])=>{
+    const done = items.filter(i=>i.STATUS==="COMPLETE").length;
+    const pct = Math.round(done/items.length*100);
 
     const div = document.createElement("div");
-    div.className = "area";
+    div.className="area-card";
+    div.onclick=()=>openArea(area);
 
-    div.innerHTML = `
-      <h3 onclick="toggle(this)">
-        ${area} — ${completed}/${rows.length} COMPLETE
-      </h3>
+    div.innerHTML=`
+      <h4>${area}</h4>
+      <span class="badge ${pct===100?"complete":"not"}">
+        ${done}/${items.length} COMPLETE
+      </span>
+
       <div class="progress">
-        <div class="progress-bar" style="width:${percent}%"></div>
+        <div class="progress-bar" style="width:${pct}%"></div>
       </div>
-      <div class="appendix">
-        ${rows.map(r => `
-          <div class="row">
-            <div>${r["NO APPENDIX"]}</div>
-            <div>${r["ITEM"]}</div>
-            <div>${r["PIC_ROLE"]}</div>
-            <div>${r["STATUS"]}</div>
-            <div>
-              <input type="checkbox"
-                ${r["STATUS"]==="COMPLETE"?"checked":""}
-                onchange="updateStatus('${r["NO APPENDIX"]}', this.checked)">
-            </div>
-          </div>
-        `).join("")}
-      </div>
+      <small>${pct}% completed</small>
     `;
-    container.appendChild(div);
+
+    grid.appendChild(div);
   });
 }
 
-function toggle(h) {
-  h.nextElementSibling.nextElementSibling.style.display =
-    h.nextElementSibling.nextElementSibling.style.display === "none"
-    ? "block" : "none";
+function openArea(area){
+  currentArea = area;
+  document.getElementById("modalTitle").innerText = area;
+  const list = document.getElementById("itemList");
+  list.innerHTML="";
+
+  appendixData
+    .filter(a=>a.APPENDIX===area)
+    .forEach(a=>{
+      list.innerHTML+=`
+        <div class="item">
+          <b>${a["NO APPENDIX"]}</b> – ${a.ITEM}<br>
+          PIC: ${a.PIC_ROLE}<br><br>
+
+          <label>
+            <input type="checkbox"
+              ${a.STATUS==="COMPLETE"?"checked":""}
+              onchange="updateStatus('${a["NO APPENDIX"]}',this.checked)">
+            COMPLETE
+          </label>
+          <br><br>
+
+          <input type="text"
+            placeholder="Paste Google Drive link"
+            value="${a.DOC_LINK||""}"
+            onchange="updateLink('${a["NO APPENDIX"]}',this.value)">
+        </div>
+      `;
+    });
+
+  document.getElementById("modal").style.display="block";
 }
 
-async function updateStatus(no, checked) {
-  await fetch(API_URL, {
-    method: "POST",
-    body: JSON.stringify({
-      appendix: no,
-      status: checked ? "COMPLETE" : "NOT STARTED"
+function closeModal(){
+  document.getElementById("modal").style.display="none";
+}
+
+async function updateStatus(noAppendix,checked){
+  await fetch(API_URL,{
+    method:"POST",
+    body:JSON.stringify({
+      appendix:noAppendix,
+      status: checked?"COMPLETE":"NOT STARTED"
     })
   });
-  location.reload();
+  loadData();
 }
 
-loadAppendix();
+async function updateLink(noAppendix,link){
+  await fetch(API_URL,{
+    method:"POST",
+    body:JSON.stringify({
+      appendix:noAppendix,
+      status:"COMPLETE",
+      doc_link:link
+    })
+  });
+}
+
+loadData();
 </script>
 
 </body>
