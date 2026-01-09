@@ -6,86 +6,102 @@
 
 <style>
 body{
-  font-family:Inter, Arial, sans-serif;
-  background:#f6f8fb;
-  padding:24px;
+  font-family:Inter,Arial;
+  background:#f5f7fb;
+  margin:0;
+  padding:30px;
 }
-
-h1{
-  margin-bottom:20px;
-}
+h1{margin-bottom:20px}
 
 .grid{
   display:grid;
   grid-template-columns:repeat(auto-fill,minmax(360px,1fr));
   gap:20px;
 }
-
 .card{
   background:white;
-  border-radius:18px;
+  border-radius:14px;
   padding:20px;
   box-shadow:0 10px 25px rgba(0,0,0,.08);
 }
-
-.card h3{
-  margin:0;
-}
-
-.sub{
-  color:#666;
-  font-size:14px;
-  margin-bottom:10px;
-}
-
 .badge{
   display:inline-block;
-  padding:4px 12px;
+  padding:6px 14px;
   border-radius:20px;
   font-size:12px;
-  margin-bottom:12px;
 }
-
-.ready{background:#e6fff0;color:#047857}
+.ready{background:#e6fff3;color:#007a3d}
 .notready{background:#ffecec;color:#b00020}
 
-.progress-wrap{
+.progress{
   display:flex;
   gap:16px;
   align-items:center;
+  margin:14px 0;
 }
-
-.ring{
-  width:90px;
-  height:90px;
-}
-
-.ring circle{
-  fill:none;
-  stroke-width:8;
-  stroke-linecap:round;
-}
-
-.ring-bg{stroke:#e5e7eb}
-.ring-val{stroke:#22c55e}
-
-.percent{
-  font-weight:bold;
-  font-size:18px;
-}
-
-.meta{
-  font-size:14px;
-  margin-top:6px;
-}
-
+svg{width:80px;height:80px}
+circle{fill:none;stroke-width:8}
+.bg{stroke:#eee}
+.fg{stroke:#6366f1;stroke-linecap:round}
 button{
-  margin-top:14px;
   padding:8px 14px;
-  border-radius:10px;
+  border-radius:8px;
   border:1px solid #ccc;
-  background:white;
+  background:#fff;
   cursor:pointer;
+}
+button.primary{
+  background:#2563eb;
+  color:#fff;
+  border:none;
+}
+
+/* MODAL */
+.modal{
+  display:none;
+  position:fixed;
+  inset:0;
+  background:rgba(0,0,0,.5);
+  padding:40px;
+  z-index:999;
+}
+.modal-box{
+  background:#fff;
+  border-radius:14px;
+  padding:20px;
+  max-width:1100px;
+  margin:auto;
+  max-height:85vh;
+  overflow:auto;
+}
+.tabs{
+  display:flex;
+  gap:14px;
+  margin-top:10px;
+}
+.tab{
+  cursor:pointer;
+  font-weight:bold;
+  color:#666;
+}
+.tab.active{
+  color:#2563eb;
+  border-bottom:2px solid #2563eb;
+}
+table{
+  width:100%;
+  border-collapse:collapse;
+  margin-top:10px;
+}
+th,td{
+  border:1px solid #ddd;
+  padding:8px;
+  font-size:13px;
+}
+th{background:#f1f5f9}
+input,select{
+  padding:6px;
+  width:100%;
 }
 </style>
 </head>
@@ -93,85 +109,148 @@ button{
 <body>
 
 <h1>📘 PPKPK – Programme Accreditation Dashboard</h1>
+<div id="grid" class="grid"></div>
 
-<div class="grid" id="grid"></div>
+<!-- MODAL -->
+<div id="modal" class="modal">
+  <div class="modal-box">
+    <h2 id="mTitle"></h2>
+
+    <div class="tabs">
+      <div class="tab active" onclick="showTab('info')">Overview</div>
+      <div class="tab" onclick="showTab('students')">Students</div>
+      <div class="tab" onclick="showTab('coppa')">COPPA / SRR</div>
+    </div>
+
+    <div id="info"></div>
+    <div id="students" style="display:none"></div>
+    <div id="coppa" style="display:none"></div>
+
+    <br>
+    <button onclick="closeModal()">Close</button>
+  </div>
+</div>
 
 <script>
-const API =
-"https://script.google.com/macros/s/AKfycbzzfNBLau1GPNucFLHvLUc_78B5M21SbE2AYYzbIA6QOLucZ8KDHQeAtM01U90V3kPvSw/exec";
+const STUDENT_API="https://script.google.com/macros/s/AKfycbzveYXbtD0_WdOmaX5pXapE4mBZoT9lsMlLSi7nM8iGyErZ69WjJKRoBre9Wy6MTjXbkg/exec";
+const APPENDIX_API="https://script.google.com/macros/s/AKfycbzzfNBLau1GPNucFLHvLUc_78B5M21SbE2AYYzbIA6QOLucZ8KDHQeAtM01U90V3kPvSw/exec";
+
+let appendix=[],students=[];
 
 async function load(){
-  const res = await fetch(API);
-  const data = await res.json();
+  appendix=await (await fetch(APPENDIX_API)).json();
+  students=await (await fetch(STUDENT_API)).json();
 
   const programs={};
 
-  data.forEach(r=>{
-    const p=r["ACADEMIC PROGRAM"];
+  appendix.forEach(a=>{
+    const p=a["ACADEMIC PROGRAM"];
     if(!p) return;
-
-    if(!programs[p]){
-      programs[p]={
-        academic:p,
-        bm:r["PROGRAM AKADEMIK"],
-        total:0,
-        done:0
-      };
-    }
-
+    if(!programs[p]) programs[p]={total:0,done:0};
     programs[p].total++;
-    if(r.STATUS==="COMPLETE") programs[p].done++;
+    if(a.STATUS==="COMPLETE") programs[p].done++;
   });
 
   const grid=document.getElementById("grid");
+  grid.innerHTML="";
 
-  Object.values(programs).forEach(p=>{
+  Object.entries(programs).forEach(([name,p])=>{
     const percent=Math.round((p.done/p.total)*100)||0;
     const ready=percent===100;
-    const r=36;
-    const c=2*Math.PI*r;
-    const offset=c-(percent/100)*c;
+    const r=34,c=2*Math.PI*r,off=c-(percent/100)*c;
 
     grid.innerHTML+=`
       <div class="card">
-        <h3>${p.academic}</h3>
-        <div class="sub">${p.bm||""}</div>
+        <h3>${name}</h3>
+        <span class="badge ${ready?"ready":"notready"}">${ready?"READY":"NOT READY"}</span>
 
-        <div class="badge ${ready?"ready":"notready"}">
-          ${ready?"READY":"NOT READY"}
-        </div>
-
-        <div class="progress-wrap">
-          <svg class="ring" viewBox="0 0 100 100">
-            <circle class="ring-bg" cx="50" cy="50" r="${r}"/>
-            <circle class="ring-val"
-              cx="50" cy="50" r="${r}"
+        <div class="progress">
+          <svg viewBox="0 0 100 100">
+            <circle class="bg" cx="50" cy="50" r="${r}"/>
+            <circle class="fg" cx="50" cy="50" r="${r}"
               stroke-dasharray="${c}"
-              stroke-dashoffset="${offset}"
+              stroke-dashoffset="${off}"
               transform="rotate(-90 50 50)"/>
           </svg>
-
           <div>
-            <div class="percent">${percent}% Complete</div>
-            <div class="meta">${p.done} / ${p.total} appendix completed</div>
+            <b>${percent}% Complete</b><br>
+            ${p.done} / ${p.total} appendix
           </div>
         </div>
 
-        <button onclick="openProgram('${encodeURIComponent(p.academic)}')">
+        <button class="primary" onclick="openProgram('${name}')">
           View Programme Dashboard
         </button>
-      </div>
-    `;
+      </div>`;
   });
 }
 
 function openProgram(name){
-  window.location.href=
-    "programme.html?program="+name;
+  document.getElementById("modal").style.display="block";
+  document.getElementById("mTitle").innerText=name;
+
+  const s=students.filter(x=>x["PROGRAM AKADEMIK"]===name);
+  const a=appendix.filter(x=>x["ACADEMIC PROGRAM"]===name);
+
+  document.getElementById("info").innerHTML=`
+    <p><b>Total Students:</b> ${s.length}</p>
+    <p><b>Appendix:</b> ${a.length}</p>`;
+
+  document.getElementById("students").innerHTML=`
+    <table>
+      <tr><th>No Matrik</th><th>Name</th><th>Status</th></tr>
+      ${s.map(x=>`
+        <tr>
+          <td>${x["NO MATRIK"]||""}</td>
+          <td>${x["NAMA PELAJAR"]||""}</td>
+          <td>${x["STATUS PENGAJIAN"]||""}</td>
+        </tr>`).join("")}
+    </table>`;
+
+  document.getElementById("coppa").innerHTML=`
+    <table>
+      <tr><th>Appendix</th><th>Item</th><th>Status</th><th>Link</th><th>Save</th></tr>
+      ${a.map(x=>`
+        <tr>
+          <td>${x["NO APPENDIX"]}</td>
+          <td>${x.ITEM}</td>
+          <td>
+            <select id="s_${x["NO APPENDIX"]}">
+              ${["NOT STARTED","IN PROGRESS","COMPLETE"].map(v=>
+                `<option ${x.STATUS===v?"selected":""}>${v}</option>`).join("")}
+            </select>
+          </td>
+          <td><input id="l_${x["NO APPENDIX"]}" value="${x.DOC_LINK||""}"></td>
+          <td>
+            <button onclick="save('${x["NO APPENDIX"]}')">Save</button>
+          </td>
+        </tr>`).join("")}
+    </table>`;
 }
+
+async function save(id){
+  await fetch(APPENDIX_API,{
+    method:"POST",
+    body:JSON.stringify({
+      appendix:id,
+      status:document.getElementById("s_"+id).value,
+      doc_link:document.getElementById("l_"+id).value
+    })
+  });
+  alert("Updated");
+  load();
+}
+
+function showTab(t){
+  ["info","students","coppa"].forEach(x=>{
+    document.getElementById(x).style.display=x===t?"block":"none";
+  });
+  document.querySelectorAll(".tab").forEach(el=>el.classList.remove("active"));
+  event.target.classList.add("active");
+}
+function closeModal(){document.getElementById("modal").style.display="none"}
 
 load();
 </script>
-
 </body>
 </html>
