@@ -1,311 +1,145 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <meta charset="UTF-8">
-  <title>Sistem Penjejak Pematuhan & SRR Akreditasi Program PPKPK</title>
+<meta charset="UTF-8">
+<title>PPKPK – SRR Main Dashboard</title>
 
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      background: #f6f8fb;
-      padding: 24px;
-    }
+<style>
+body {
+  font-family: Arial, sans-serif;
+  background:#f6f8fb;
+  padding:24px;
+}
 
-    h2 { margin-bottom: 20px; }
+h1 { margin-bottom:20px; }
 
-    .grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(480px, 1fr));
-      gap: 20px;
-    }
+.grid {
+  display:grid;
+  grid-template-columns:repeat(auto-fill,minmax(380px,1fr));
+  gap:20px;
+}
 
-    .card {
-      background: white;
-      border-radius: 14px;
-      padding: 20px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.08);
-    }
+.card {
+  background:white;
+  border-radius:14px;
+  padding:20px;
+  box-shadow:0 6px 16px rgba(0,0,0,0.08);
+}
 
-    .badge {
-      display: inline-block;
-      padding: 4px 12px;
-      border-radius: 20px;
-      font-size: 12px;
-      margin: 6px 0;
-    }
+.badge {
+  display:inline-block;
+  padding:6px 14px;
+  border-radius:20px;
+  font-size:12px;
+  margin:8px 0;
+}
 
-    .ready { background:#e6fff0; color:#007a3d; }
-    .in-progress { background:#fff4d6; color:#9a6b00; }
-    .not-ready { background:#ffecec; color:#b00020; }
+.ready {
+  background:#e6fff0;
+  color:#047857;
+}
 
-    .tabs {
-      display: flex;
-      gap: 14px;
-      margin: 12px 0;
-    }
+.not-ready {
+  background:#fee2e2;
+  color:#991b1b;
+}
 
-    .tab {
-      background: none;
-      border: none;
-      font-weight: bold;
-      cursor: pointer;
-      color: #555;
-    }
+.progress {
+  background:#e5e7eb;
+  border-radius:20px;
+  overflow:hidden;
+  height:10px;
+  margin:10px 0;
+}
 
-    .tab.active {
-      border-bottom: 2px solid #2563eb;
-      color: #2563eb;
-    }
+.progress div {
+  height:100%;
+  background:#6366f1;
+}
 
-    .meta p {
-      font-size: 14px;
-      margin: 4px 0;
-    }
-
-    button {
-      padding: 6px 10px;
-      border-radius: 6px;
-      border: 1px solid #ccc;
-      background: #fff;
-      cursor: pointer;
-    }
-
-    /* COPPA */
-    .area-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-      gap: 12px;
-      margin-top: 10px;
-    }
-
-    .area-card {
-      border-radius: 12px;
-      padding: 12px;
-      background: #f9fafb;
-      border: 1px solid #e5e7eb;
-    }
-
-    .area-title {
-      font-weight: bold;
-      margin-bottom: 6px;
-    }
-
-    /* MODAL */
-    #studentModal {
-      display:none;
-      position:fixed;
-      inset:0;
-      background:rgba(0,0,0,0.5);
-      padding:40px;
-      z-index:9999;
-    }
-
-    #studentModal .box {
-      background:white;
-      border-radius:12px;
-      padding:20px;
-      max-width:900px;
-      margin:auto;
-      max-height:80vh;
-      overflow:auto;
-    }
-
-    table {
-      width:100%;
-      border-collapse:collapse;
-      margin-top:10px;
-    }
-
-    th, td {
-      border:1px solid #ccc;
-      padding:6px;
-      font-size:13px;
-    }
-
-    th { background:#eee; }
-  </style>
+button {
+  margin-top:12px;
+  padding:8px 12px;
+  border-radius:8px;
+  border:1px solid #ccc;
+  background:#fff;
+  cursor:pointer;
+}
+</style>
 </head>
 
 <body>
 
-<h2>Sistem Penjejak Pematuhan & SRR Akreditasi Program PPKPK</h2>
+<h1>📘 PPKPK – SRR Programme Readiness Dashboard</h1>
 
 <div id="programmeGrid" class="grid"></div>
 
-<!-- STUDENT MODAL -->
-<div id="studentModal">
-  <div class="box">
-    <h3>Student List</h3>
-    <table>
-      <thead>
-        <tr>
-          <th>No Matrik</th>
-          <th>Nama Pelajar</th>
-          <th>Status Pengajian</th>
-        </tr>
-      </thead>
-      <tbody id="studentBody"></tbody>
-    </table>
-    <br>
-    <button onclick="closeStudents()">Close</button>
-  </div>
-</div>
-
 <script>
-/* =========================
-   CONFIG
-========================= */
-const STUDENT_API =
-  "https://script.google.com/macros/s/AKfycbzveYXbtD0_WdOmaX5pXapE4mBZoT9lsMlLSi7nM8iGyErZ69WjJKRoBre9Wy6MTjXbkg/exec";
-
+// ================= CONFIG =================
 const APPENDIX_API =
-  "https://script.google.com/macros/s/AKfycbyaoeWEPfrYWB72y50XHKQiGEmnM041i3coqmugrHUlnWZS0O6XlsDnPsIGcjOOq8daqQ/exec";
+ "https://script.google.com/macros/s/AKfycbzzfNBLau1GPNucFLHvLUc_78B5M21SbE2AYYzbIA6QOLucZ8KDHQeAtM01U90V3kPvSw/exec";
 
-const MIN_GRADUAN_FOR_SRR = 1;
+const PROGRAMMES = [
+  "Master of Science (Clinical Sciences)",
+  "Master of Science (Community Medicine)",
+  "Master of Science (Human Genetics)",
+  "Doctor of Philosophy (Minden)"
+  // 👉 boleh tambah sendiri
+];
 
-/* =========================
-   LOAD DASHBOARD
-========================= */
-async function loadProgrammeDashboard() {
-  const [studentRes, appendixRes] = await Promise.all([
-    fetch(STUDENT_API),
-    fetch(APPENDIX_API)
-  ]);
+const READY_THRESHOLD = 80; // %
 
-  const studentsData = await studentRes.json();
-  const appendixData = await appendixRes.json();
+/* ================= LOAD ================= */
+async function loadDashboard() {
+  const res = await fetch(APPENDIX_API);
+  const appendix = await res.json();
 
-  /* GROUP APPENDIX BY AREA */
-  const appendixByArea = {};
-  appendixData.forEach(a => {
-    if (!appendixByArea[a.AREA]) appendixByArea[a.AREA] = [];
-    appendixByArea[a.AREA].push(a);
-  });
+  const total = appendix.length;
+  const completed = appendix.filter(
+    a => (a.STATUS || "").toUpperCase() === "COMPLETE"
+  ).length;
 
-  const programmes = {};
-
-  studentsData.forEach(row => {
-    const prog = row["PROGRAM AKADEMIK"];
-    if (!prog) return;
-
-    if (!programmes[prog]) {
-      programmes[prog] = {
-        academic: row["ACADEMIC PROGRAM"],
-        bm: row["PROGRAM AKADEMIK"],
-        mqr: row["NO MQR"],
-        centre: row["PEMILIK PROGRAM"],
-        nec: row["NEC"],
-        ketua: row["KETUA PROGRAM"],
-        team: new Set(),
-        students: [],
-        aktif: 0,
-        graduan: 0,
-        tangguh: 0
-      };
-    }
-
-    const ketua = row["KETUA PROGRAM"];
-    const penyelia = row["PENYELIA UTAMA"];
-    if (penyelia && penyelia !== ketua) programmes[prog].team.add(penyelia);
-
-    if (row["STATUS PENGAJIAN"]) {
-      programmes[prog].students.push(row);
-      if (row["STATUS PENGAJIAN"] === "AKTIF") programmes[prog].aktif++;
-      if (row["STATUS PENGAJIAN"] === "BERIJAZAH") programmes[prog].graduan++;
-      if (row["STATUS PENGAJIAN"] === "TANGGUH") programmes[prog].tangguh++;
-    }
-  });
+  const percent = Math.round((completed / total) * 100);
+  const ready = percent >= READY_THRESHOLD;
 
   const grid = document.getElementById("programmeGrid");
   grid.innerHTML = "";
 
-  Object.values(programmes).forEach(p => {
-    const ready = p.graduan >= MIN_GRADUAN_FOR_SRR;
-
+  PROGRAMMES.forEach(program => {
     const card = document.createElement("div");
     card.className = "card";
 
     card.innerHTML = `
-      <h3>${p.academic}</h3>
-      <div style="font-size:14px;color:#666">${p.bm}</div>
+      <h3>${program}</h3>
 
       <span class="badge ${ready ? "ready" : "not-ready"}">
         ${ready ? "READY" : "NOT READY"}
       </span>
 
-      <div class="tabs">
-        <button class="tab active" onclick="switchTab(this,'overview')">Overview</button>
-        <button class="tab" onclick="switchTab(this,'coppa')">COPPA Evidence</button>
-        <button class="tab" onclick="switchTab(this,'docs')">Documents</button>
+      <div class="progress">
+        <div style="width:${percent}%"></div>
       </div>
 
-      <div class="tab-content overview meta">
-        <p><b>NO MQR:</b> ${p.mqr || "-"}</p>
-        <p><b>Centre:</b> ${p.centre || "-"}</p>
-        <p><b>NEC:</b> ${p.nec || "-"}</p>
-        <p><b>Ketua Program:</b> ${p.ketua || "-"}</p>
-        <p><b>Team Members:</b> ${[...p.team].join(", ") || "-"}</p>
-        <p>Aktif: ${p.aktif} | Graduan: ${p.graduan} | Tangguh: ${p.tangguh}</p>
-        <button onclick='openStudents(${JSON.stringify(p.students)})'>View Student List</button>
+      <b>${percent}%</b> COMPLETE  
+      <div style="font-size:14px;color:#555">
+        ${completed} / ${total} appendix completed
       </div>
 
-      <div class="tab-content coppa" style="display:none">
-        <div class="area-grid">
-          ${Object.entries(appendixByArea).map(([area, items]) => {
-            const total = items.length;
-            const complete = items.filter(i => i.STATUS === "COMPLETE").length;
-            const cls = complete === total ? "ready" :
-                        complete > 0 ? "in-progress" : "not-ready";
-            return `
-              <div class="area-card">
-                <div class="area-title">${area}</div>
-                <span class="badge ${cls}">
-                  ${complete}/${total} COMPLETE
-                </span>
-              </div>`;
-          }).join("")}
-        </div>
-      </div>
-
-      <div class="tab-content docs" style="display:none">
-        <p>📄 SRR & Supporting Documents</p>
-      </div>
+      <button onclick="openProgramme('${program}')">
+        View Programme Dashboard
+      </button>
     `;
 
     grid.appendChild(card);
   });
 }
 
-/* =========================
-   UTIL
-========================= */
-function switchTab(btn, tab) {
-  const card = btn.closest(".card");
-  card.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
-  btn.classList.add("active");
-  card.querySelectorAll(".tab-content").forEach(c => c.style.display = "none");
-  card.querySelector("." + tab).style.display = "block";
+function openProgramme(program) {
+  window.location.href =
+    `programme.html?program=${encodeURIComponent(program)}`;
 }
 
-function openStudents(students) {
-  const body = document.getElementById("studentBody");
-  body.innerHTML = "";
-  students.forEach(s => {
-    body.innerHTML += `
-      <tr>
-        <td>${s["NO MATRIK"] || "-"}</td>
-        <td>${s["NAMA PELAJAR"] || "-"}</td>
-        <td>${s["STATUS PENGAJIAN"] || "-"}</td>
-      </tr>`;
-  });
-  document.getElementById("studentModal").style.display = "block";
-}
-
-function closeStudents() {
-  document.getElementById("studentModal").style.display = "none";
-}
-
-loadProgrammeDashboard();
+loadDashboard();
 </script>
 
 </body>
