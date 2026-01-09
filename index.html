@@ -2,7 +2,7 @@
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>Sistem Penjejak Pematuhan & SRR Akreditasi Program PPKPK (PPKPK Programme Accreditation Compliance & SRR Tracker System)</title>
+  <title>Sistem Penjejak Pematuhan & SRR Akreditasi Program PPKPK</title>
 
   <style>
     body {
@@ -21,7 +21,7 @@
 
     .card {
       background: white;
-      border-radius: 12px;
+      border-radius: 14px;
       padding: 20px;
       box-shadow: 0 4px 12px rgba(0,0,0,0.08);
     }
@@ -35,6 +35,7 @@
     }
 
     .ready { background:#e6fff0; color:#007a3d; }
+    .in-progress { background:#fff4d6; color:#9a6b00; }
     .not-ready { background:#ffecec; color:#b00020; }
 
     .tabs {
@@ -67,6 +68,26 @@
       border: 1px solid #ccc;
       background: #fff;
       cursor: pointer;
+    }
+
+    /* COPPA */
+    .area-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 12px;
+      margin-top: 10px;
+    }
+
+    .area-card {
+      border-radius: 12px;
+      padding: 12px;
+      background: #f9fafb;
+      border: 1px solid #e5e7eb;
+    }
+
+    .area-title {
+      font-weight: bold;
+      margin-bottom: 6px;
     }
 
     /* MODAL */
@@ -107,7 +128,7 @@
 
 <body>
 
-<h2>Sistem Penjejak Pematuhan & SRR Akreditasi Program PPKPK (PPKPK Programme Accreditation Compliance & SRR Tracker System)</h2>
+<h2>Sistem Penjejak Pematuhan & SRR Akreditasi Program PPKPK</h2>
 
 <div id="programmeGrid" class="grid"></div>
 
@@ -133,23 +154,37 @@
 <script>
 /* =========================
    CONFIG
-   ========================= */
-const API_URL =
+========================= */
+const STUDENT_API =
   "https://script.google.com/macros/s/AKfycbzveYXbtD0_WdOmaX5pXapE4mBZoT9lsMlLSi7nM8iGyErZ69WjJKRoBre9Wy6MTjXbkg/exec";
 
-/* SRR rule: programme READY if graduan >= this */
+const APPENDIX_API =
+  "https://script.google.com/macros/s/AKfycbyaoeWEPfrYWB72y50XHKQiGEmnM041i3coqmugrHUlnWZS0O6XlsDnPsIGcjOOq8daqQ/exec";
+
 const MIN_GRADUAN_FOR_SRR = 1;
 
 /* =========================
    LOAD DASHBOARD
-   ========================= */
+========================= */
 async function loadProgrammeDashboard() {
-  const res = await fetch(API_URL);
-  const data = await res.json();
+  const [studentRes, appendixRes] = await Promise.all([
+    fetch(STUDENT_API),
+    fetch(APPENDIX_API)
+  ]);
+
+  const studentsData = await studentRes.json();
+  const appendixData = await appendixRes.json();
+
+  /* GROUP APPENDIX BY AREA */
+  const appendixByArea = {};
+  appendixData.forEach(a => {
+    if (!appendixByArea[a.AREA]) appendixByArea[a.AREA] = [];
+    appendixByArea[a.AREA].push(a);
+  });
 
   const programmes = {};
 
-  data.forEach(row => {
+  studentsData.forEach(row => {
     const prog = row["PROGRAM AKADEMIK"];
     if (!prog) return;
 
@@ -169,16 +204,10 @@ async function loadProgrammeDashboard() {
       };
     }
 
-    // team members = other lecturers EXCEPT Ketua Program
-const ketua = row["KETUA PROGRAM"];
-const penyelia = row["PENYELIA UTAMA"];
+    const ketua = row["KETUA PROGRAM"];
+    const penyelia = row["PENYELIA UTAMA"];
+    if (penyelia && penyelia !== ketua) programmes[prog].team.add(penyelia);
 
-if (penyelia && penyelia !== ketua) {
-  programmes[prog].team.add(penyelia);
-}
-
-
-    // student status (if present)
     if (row["STATUS PENGAJIAN"]) {
       programmes[prog].students.push(row);
       if (row["STATUS PENGAJIAN"] === "AKTIF") programmes[prog].aktif++;
@@ -216,26 +245,30 @@ if (penyelia && penyelia !== ketua) {
         <p><b>NEC:</b> ${p.nec || "-"}</p>
         <p><b>Ketua Program:</b> ${p.ketua || "-"}</p>
         <p><b>Team Members:</b> ${[...p.team].join(", ") || "-"}</p>
-        <p>
-          Aktif: ${p.aktif} |
-          Graduan: ${p.graduan} |
-          Tangguh: ${p.tangguh}
-        </p>
-        <button onclick='openStudents(${JSON.stringify(p.students)})'>
-          View Student List
-        </button>
+        <p>Aktif: ${p.aktif} | Graduan: ${p.graduan} | Tangguh: ${p.tangguh}</p>
+        <button onclick='openStudents(${JSON.stringify(p.students)})'>View Student List</button>
       </div>
 
       <div class="tab-content coppa" style="display:none">
-        <p>✔ COPPA mapping</p>
-        <p>✔ Assessment alignment</p>
-        <p>✔ CQI evidence</p>
+        <div class="area-grid">
+          ${Object.entries(appendixByArea).map(([area, items]) => {
+            const total = items.length;
+            const complete = items.filter(i => i.STATUS === "COMPLETE").length;
+            const cls = complete === total ? "ready" :
+                        complete > 0 ? "in-progress" : "not-ready";
+            return `
+              <div class="area-card">
+                <div class="area-title">${area}</div>
+                <span class="badge ${cls}">
+                  ${complete}/${total} COMPLETE
+                </span>
+              </div>`;
+          }).join("")}
+        </div>
       </div>
 
       <div class="tab-content docs" style="display:none">
-        <p>📄 SRR Report</p>
-        <p>📄 Course Files</p>
-        <p>📄 External Examiner Reports</p>
+        <p>📄 SRR & Supporting Documents</p>
       </div>
     `;
 
@@ -244,34 +277,27 @@ if (penyelia && penyelia !== ketua) {
 }
 
 /* =========================
-   TABS
-   ========================= */
+   UTIL
+========================= */
 function switchTab(btn, tab) {
   const card = btn.closest(".card");
   card.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
   btn.classList.add("active");
-
   card.querySelectorAll(".tab-content").forEach(c => c.style.display = "none");
   card.querySelector("." + tab).style.display = "block";
 }
 
-/* =========================
-   STUDENT MODAL
-   ========================= */
 function openStudents(students) {
   const body = document.getElementById("studentBody");
   body.innerHTML = "";
-
   students.forEach(s => {
     body.innerHTML += `
       <tr>
         <td>${s["NO MATRIK"] || "-"}</td>
         <td>${s["NAMA PELAJAR"] || "-"}</td>
         <td>${s["STATUS PENGAJIAN"] || "-"}</td>
-      </tr>
-    `;
+      </tr>`;
   });
-
   document.getElementById("studentModal").style.display = "block";
 }
 
