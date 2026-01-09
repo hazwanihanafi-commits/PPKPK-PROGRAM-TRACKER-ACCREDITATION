@@ -4,8 +4,17 @@
   <meta charset="UTF-8">
   <title>PPKPK Programme Accreditation Compliance & SRR Tracker</title>
 
-  <!-- CSS (Step 4) -->
   <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f6f8fb;
+      padding: 24px;
+    }
+
+    h2 {
+      margin-bottom: 20px;
+    }
+
     .grid {
       display: grid;
       grid-template-columns: repeat(auto-fill, minmax(420px, 1fr));
@@ -19,52 +28,98 @@
       box-shadow: 0 4px 12px rgba(0,0,0,0.08);
     }
 
-    .badge.ready { background:#e6fff0; color:#007a3d; }
-    .badge.not-ready { background:#ffecec; color:#b00020; }
+    .card h3 {
+      margin: 0 0 6px;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: 20px;
+      font-size: 12px;
+      margin-bottom: 10px;
+    }
+
+    .badge.ready {
+      background: #e6fff0;
+      color: #007a3d;
+    }
+
+    .badge.not-ready {
+      background: #ffecec;
+      color: #b00020;
+    }
+
+    .counts {
+      margin-top: 10px;
+      font-size: 14px;
+    }
   </style>
 </head>
 
 <body>
 
-  <!-- ✅ STEP 3 GOES HERE -->
   <h2>PPKPK Programme Accreditation Compliance & SRR Tracker</h2>
+
   <div id="programmeGrid" class="grid"></div>
 
-  <!-- JavaScript (Step 2) -->
   <script>
-    const API_URL = "YOUR_APPS_SCRIPT_WEB_APP_URL";
+    const API_URL =
+      "https://script.google.com/macros/s/AKfycbzveYXbtD0_WdOmaX5pXapE4mBZoT9lsMlLSi7nM8iGyErZ69WjJKRoBre9Wy6MTjXbkg/exec";
 
     async function loadProgrammeDashboard() {
-      const res = await fetch(API_URL);
-      const data = await res.json();
+      try {
+        const res = await fetch(API_URL);
+        const data = await res.json();
 
-      const programmes = {};
-      data.forEach(s => {
-        const p = s["PROGRAM AKADEMIK"];
-        if (!programmes[p]) {
-          programmes[p] = { aktif:0, graduan:0, tangguh:0 };
-        }
-        if (s["STATUS PENGAJIAN"] === "AKTIF") programmes[p].aktif++;
-        if (s["STATUS PENGAJIAN"] === "BERIJAZAH") programmes[p].graduan++;
-        if (s["STATUS PENGAJIAN"] === "TANGGUH") programmes[p].tangguh++;
-      });
+        const programmes = {};
 
-      const grid = document.getElementById("programmeGrid");
-      grid.innerHTML = "";
+        data.forEach(s => {
+          const programme = s["PROGRAM AKADEMIK"];
+          if (!programme) return;
 
-      Object.entries(programmes).forEach(([name, p]) => {
-        const ready = p.graduan > 0;
+          if (!programmes[programme]) {
+            programmes[programme] = {
+              aktif: 0,
+              graduan: 0,
+              tangguh: 0
+            };
+          }
 
-        grid.innerHTML += `
-          <div class="card">
+          if (s["STATUS PENGAJIAN"] === "AKTIF") programmes[programme].aktif++;
+          if (s["STATUS PENGAJIAN"] === "BERIJAZAH") programmes[programme].graduan++;
+          if (s["STATUS PENGAJIAN"] === "TANGGUH") programmes[programme].tangguh++;
+        });
+
+        const grid = document.getElementById("programmeGrid");
+        grid.innerHTML = "";
+
+        Object.entries(programmes).forEach(([name, p]) => {
+          const ready = p.graduan > 0;
+
+          const card = document.createElement("div");
+          card.className = "card";
+
+          card.innerHTML = `
             <h3>${name}</h3>
             <span class="badge ${ready ? "ready" : "not-ready"}">
               ${ready ? "READY" : "NOT READY"}
             </span>
-            <p>Aktif: ${p.aktif} | Graduan: ${p.graduan} | Tangguh: ${p.tangguh}</p>
-          </div>
-        `;
-      });
+            <div class="counts">
+              Aktif: ${p.aktif} |
+              Graduan: ${p.graduan} |
+              Tangguh: ${p.tangguh}
+            </div>
+          `;
+
+          grid.appendChild(card);
+        });
+
+      } catch (err) {
+        document.getElementById("programmeGrid").innerHTML =
+          "<p style='color:red'>Failed to load data.</p>";
+        console.error(err);
+      }
     }
 
     loadProgrammeDashboard();
