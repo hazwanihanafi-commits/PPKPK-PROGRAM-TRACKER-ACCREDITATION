@@ -279,24 +279,25 @@ async function saveLink(btn){
     return;
   }
 
-  btn.innerText="Saving...";
-  btn.disabled=true;
+  const formData = new FormData();
+  formData.append("appendix", no);
+  formData.append("status", "COMPLETE");
+  formData.append("doc_link", link);
 
-  await fetch(APPENDIX_API,{
-    method:"POST",
-    headers:{ "Content-Type":"application/json" },
-    body:JSON.stringify({
-      appendix:no,
-      status:"COMPLETE",
-      doc_link:link
-    })
+  btn.innerText = "Saving...";
+  btn.disabled = true;
+
+  await fetch(APPENDIX_API, {
+    method: "POST",
+    body: formData
   });
 
-  btn.innerText="Saved";
-  btn.style.background="#16a34a";
+  btn.innerText = "Saved";
+  btn.style.background = "#16a34a";
 
   loadDashboard();
 }
+
 
 /* ================= INIT ================= */
 loadDashboard();
