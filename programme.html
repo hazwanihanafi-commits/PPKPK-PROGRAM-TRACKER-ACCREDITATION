@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8" />
+<title>Programme SRR Dashboard</title>
+
+<style>
+body{
+  font-family: Arial, sans-serif;
+  background:#f6f8fb;
+  padding:24px;
+}
+
+h2{margin-bottom:8px}
+.small{color:#666;font-size:14px}
+
+.area{
+  background:#fff;
+  border-radius:12px;
+  padding:16px;
+  margin-bottom:18px;
+  box-shadow:0 4px 12px rgba(0,0,0,.08);
+}
+
+.area-header{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  margin-bottom:10px;
+}
+
+.progress{
+  height:8px;
+  background:#eee;
+  border-radius:20px;
+  overflow:hidden;
+}
+
+.progress div{
+  height:100%;
+  background:#22c55e;
+}
+
+table{
+  width:100%;
+  border-collapse:collapse;
+  margin-top:10px;
+  font-size:13px;
+}
+
+th,td{
+  border:1px solid #ddd;
+  padding:6px;
+}
+
+th{background:#f3f4f6}
+
+select,input{
+  padding:4px;
+  font-size:12px;
+}
+
+.badge{
+  padding:3px 10px;
+  border-radius:20px;
+  font-size:12px;
+}
+
+.complete{background:#e6fff0;color:#007a3d}
+.not{background:#ffecec;color:#b00020}
+</style>
+</head>
+
+<body>
+
+<h2 id="programName">Programme Dashboard</h2>
+<div class="small">SRR Appendix Checklist</div>
+<br>
+
+<div id="areaContainer"></div>
+
+<script>
+const API_URL =
+"https://script.google.com/macros/s/AKfycbzzfNBLau1GPNucFLHvLUc_78B5M21SbE2AYYzbIA6QOLucZ8KDHQeAtM01U90V3kPvSw/exec";
+
+// ambil nama program dari URL ?program=
+const PROGRAM = new URLSearchParams(window.location.search).get("program");
+
+async function loadData(){
+  const res = await fetch(API_URL);
+  const data = await res.json();
+
+  const filtered = data.filter(r => r.PROGRAM === PROGRAM || !PROGRAM);
+
+  document.getElementById("programName").innerText =
+    PROGRAM ? PROGRAM : "All Programmes";
+
+  const areas = {};
+  filtered.forEach(r=>{
+    if(!areas[r.APPENDIX]) areas[r.APPENDIX]=[];
+    areas[r.APPENDIX].push(r);
+  });
+
+  const container = document.getElementById("areaContainer");
+  container.innerHTML="";
+
+  Object.entries(areas).forEach(([area,items])=>{
+    const total = items.length;
+    const completed = items.filter(i=>i.STATUS==="COMPLETE").length;
+    const percent = Math.round((completed/total)*100);
+
+    const div = document.createElement("div");
+    div.className="area";
+
+    div.innerHTML=`
+      <div class="area-header">
+        <b>${area}</b>
+        <span class="badge ${percent===100?"complete":"not"}">
+          ${completed}/${total} COMPLETE
+        </span>
+      </div>
+      <div class="progress"><div style="width:${percent}%"></div></div>
+
+      <table>
+        <tr>
+          <th>No</th>
+          <th>Item</th>
+          <th>PIC</th>
+          <th>Status</th>
+          <th>Doc Link</th>
+        </tr>
+        ${items.map(i=>`
+          <tr>
+            <td>${i["NO APPENDIX"]}</td>
+            <td>${i.ITEM}</td>
+            <td>${i.PIC_ROLE}</td>
+            <td>
+              <select onchange="updateStatus('${i.ID}',this.value)">
+                <option ${i.STATUS==="NOT STARTED"?"selected":""}>NOT STARTED</option>
+                <option ${i.STATUS==="IN PROGRESS"?"selected":""}>IN PROGRESS</option>
+                <option ${i.STATUS==="COMPLETE"?"selected":""}>COMPLETE</option>
+              </select>
+            </td>
+            <td>
+              <input value="${i.DOC_LINK||""}"
+                placeholder="Paste link"
+                onchange="updateLink('${i.ID}',this.value)">
+            </td>
+          </tr>
+        `).join("")}
+      </table>
+    `;
+    container.appendChild(div);
+  });
+}
+
+async function updateStatus(id,status){
+  await fetch(API_URL,{
+    method:"POST",
+    body:JSON.stringify({id,field:"STATUS",value:status})
+  });
+  loadData();
+}
+
+async function updateLink(id,value){
+  await fetch(API_URL,{
+    method:"POST",
+    body:JSON.stringify({id,field:"DOC_LINK",value})
+  });
+}
+
+loadData();
+</script>
+
+</body>
+</html>
