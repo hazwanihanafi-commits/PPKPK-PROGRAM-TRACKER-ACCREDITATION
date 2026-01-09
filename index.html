@@ -2,144 +2,252 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>PPKPK – SRR Main Dashboard</title>
+<title>PPKPK – SRR Programme Dashboard</title>
 
 <style>
-body {
-  font-family: Arial, sans-serif;
+body{
+  font-family:Arial,sans-serif;
   background:#f6f8fb;
   padding:24px;
 }
 
-h1 { margin-bottom:20px; }
-
-.grid {
+.grid{
   display:grid;
-  grid-template-columns:repeat(auto-fill,minmax(380px,1fr));
+  grid-template-columns:repeat(auto-fill,minmax(420px,1fr));
   gap:20px;
 }
 
-.card {
+.card{
   background:white;
   border-radius:14px;
   padding:20px;
-  box-shadow:0 6px 16px rgba(0,0,0,0.08);
+  box-shadow:0 6px 16px rgba(0,0,0,.08);
 }
 
-.badge {
-  display:inline-block;
-  padding:6px 14px;
+.badge{
+  padding:4px 12px;
   border-radius:20px;
   font-size:12px;
-  margin:8px 0;
 }
 
-.ready {
-  background:#e6fff0;
-  color:#047857;
+.ready{background:#e6fff0;color:#047857}
+.not{background:#ffecec;color:#991b1b}
+
+button{padding:6px 12px;cursor:pointer}
+
+/* MODAL */
+#modal{
+  display:none;
+  position:fixed;
+  inset:0;
+  background:rgba(0,0,0,.5);
+  padding:30px;
+  z-index:9999;
 }
 
-.not-ready {
-  background:#fee2e2;
-  color:#991b1b;
+.modal-box{
+  background:white;
+  max-width:1000px;
+  margin:auto;
+  padding:20px;
+  border-radius:14px;
+  max-height:90vh;
+  overflow:auto;
 }
 
-.progress {
-  background:#e5e7eb;
+.tabs{
+  display:flex;
+  gap:10px;
+  margin:12px 0;
+}
+
+.tabs button{
+  border:none;
+  background:#eee;
+  padding:6px 14px;
   border-radius:20px;
-  overflow:hidden;
-  height:10px;
-  margin:10px 0;
 }
 
-.progress div {
-  height:100%;
-  background:#6366f1;
+.tabs button.active{
+  background:#2563eb;
+  color:white;
 }
 
-button {
-  margin-top:12px;
-  padding:8px 12px;
-  border-radius:8px;
-  border:1px solid #ccc;
-  background:#fff;
+.area-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fill,minmax(260px,1fr));
+  gap:14px;
+}
+
+.area-card{
+  border:1px solid #eee;
+  border-radius:10px;
+  padding:12px;
   cursor:pointer;
+}
+
+.progress{
+  height:8px;
+  background:#eee;
+  border-radius:6px;
+  overflow:hidden;
+  margin-top:6px;
+}
+
+.progress div{
+  height:100%;
+  background:#22c55e;
 }
 </style>
 </head>
 
 <body>
 
-<h1>📘 PPKPK – SRR Programme Readiness Dashboard</h1>
+<h2>📘 PPKPK – Programme SRR Dashboard</h2>
 
 <div id="programmeGrid" class="grid"></div>
 
+<!-- PROGRAMME MODAL -->
+<div id="modal">
+  <div class="modal-box">
+    <h3 id="modalTitle"></h3>
+
+    <div class="tabs">
+      <button onclick="showTab('overview')" class="active">Overview</button>
+      <button onclick="showTab('students')">Students</button>
+      <button onclick="showTab('coppa')">COPPA Evidence</button>
+    </div>
+
+    <div id="overviewTab"></div>
+    <div id="studentsTab" style="display:none"></div>
+    <div id="coppaTab" style="display:none"></div>
+
+    <br>
+    <button onclick="closeModal()">Close</button>
+  </div>
+</div>
+
 <script>
-// ================= CONFIG =================
+/* ===================== CONFIG ===================== */
+const STUDENT_API = "STUDENT_MASTER_API_URL";
 const APPENDIX_API =
  "https://script.google.com/macros/s/AKfycbzzfNBLau1GPNucFLHvLUc_78B5M21SbE2AYYzbIA6QOLucZ8KDHQeAtM01U90V3kPvSw/exec";
 
-const PROGRAMMES = [
-  "Master of Science (Clinical Sciences)",
-  "Master of Science (Community Medicine)",
-  "Master of Science (Human Genetics)",
-  "Doctor of Philosophy (Minden)"
-  // 👉 boleh tambah sendiri
-];
+let students = [];
+let appendix = [];
+let currentProgram = "";
 
-const READY_THRESHOLD = 80; // %
+/* ===================== LOAD DATA ===================== */
+async function loadAll(){
+  students = await (await fetch(STUDENT_API)).json();
+  appendix = await (await fetch(APPENDIX_API)).json();
+  renderPrograms();
+}
 
-/* ================= LOAD ================= */
-async function loadDashboard() {
-  const res = await fetch(APPENDIX_API);
-  const appendix = await res.json();
+/* ===================== MAIN DASHBOARD ===================== */
+function renderPrograms(){
+  const programs = {};
 
-  const total = appendix.length;
-  const completed = appendix.filter(
-    a => (a.STATUS || "").toUpperCase() === "COMPLETE"
-  ).length;
-
-  const percent = Math.round((completed / total) * 100);
-  const ready = percent >= READY_THRESHOLD;
+  students.forEach(s=>{
+    const p = s["PROGRAM AKADEMIK"];
+    if(!programs[p]) programs[p]={students:[]};
+    programs[p].students.push(s);
+  });
 
   const grid = document.getElementById("programmeGrid");
-  grid.innerHTML = "";
+  grid.innerHTML="";
 
-  PROGRAMMES.forEach(program => {
-    const card = document.createElement("div");
-    card.className = "card";
+  Object.entries(programs).forEach(([name,p])=>{
+    const grads = p.students.filter(s=>s["STATUS PENGAJIAN"]==="BERIJAZAH").length;
 
-    card.innerHTML = `
-      <h3>${program}</h3>
-
-      <span class="badge ${ready ? "ready" : "not-ready"}">
-        ${ready ? "READY" : "NOT READY"}
-      </span>
-
-      <div class="progress">
-        <div style="width:${percent}%"></div>
+    grid.innerHTML+=`
+      <div class="card">
+        <h3>${name}</h3>
+        <span class="badge ${grads>0?"ready":"not"}">
+          ${grads>0?"READY":"NOT READY"}
+        </span>
+        <p>Graduan: ${grads}</p>
+        <button onclick="openProgramme('${name}')">
+          View Programme Dashboard
+        </button>
       </div>
-
-      <b>${percent}%</b> COMPLETE  
-      <div style="font-size:14px;color:#555">
-        ${completed} / ${total} appendix completed
-      </div>
-
-      <button onclick="openProgramme('${program}')">
-        View Programme Dashboard
-      </button>
     `;
-
-    grid.appendChild(card);
   });
 }
 
-function openProgramme(program) {
-  window.location.href =
-    `programme.html?program=${encodeURIComponent(program)}`;
+/* ===================== MODAL ===================== */
+function openProgramme(program){
+  currentProgram = program;
+  document.getElementById("modalTitle").innerText = program;
+  showTab("overview");
+  loadOverview();
+  loadStudents();
+  loadCoppa();
+  document.getElementById("modal").style.display="block";
 }
 
-loadDashboard();
+function closeModal(){
+  document.getElementById("modal").style.display="none";
+}
+
+function showTab(tab){
+  ["overview","students","coppa"].forEach(t=>{
+    document.getElementById(t+"Tab").style.display =
+      t===tab?"block":"none";
+  });
+  document.querySelectorAll(".tabs button")
+    .forEach(b=>b.classList.remove("active"));
+  event.target.classList.add("active");
+}
+
+/* ===================== OVERVIEW ===================== */
+function loadOverview(){
+  const list = students.filter(s=>s["PROGRAM AKADEMIK"]===currentProgram);
+  const aktif = list.filter(s=>s["STATUS PENGAJIAN"]==="AKTIF").length;
+  const grad = list.filter(s=>s["STATUS PENGAJIAN"]==="BERIJAZAH").length;
+
+  document.getElementById("overviewTab").innerHTML=`
+    <p><b>Aktif:</b> ${aktif}</p>
+    <p><b>Graduan:</b> ${grad}</p>
+  `;
+}
+
+/* ===================== STUDENTS ===================== */
+function loadStudents(){
+  const list = students.filter(s=>s["PROGRAM AKADEMIK"]===currentProgram);
+  document.getElementById("studentsTab").innerHTML =
+    list.map(s=>`
+      <p>👤 ${s["NAMA PELAJAR"]} – ${s["STATUS PENGAJIAN"]}</p>
+    `).join("");
+}
+
+/* ===================== COPPA ===================== */
+function loadCoppa(){
+  const areas={};
+  appendix.forEach(a=>{
+    if(!areas[a.APPENDIX]) areas[a.APPENDIX]=[];
+    areas[a.APPENDIX].push(a);
+  });
+
+  document.getElementById("coppaTab").innerHTML =
+    `<div class="area-grid">${
+      Object.entries(areas).map(([area,items])=>{
+        const done = items.filter(i=>i.STATUS==="COMPLETE").length;
+        const pct = Math.round(done/items.length*100);
+        return `
+          <div class="area-card">
+            <b>${area}</b>
+            <div>${done}/${items.length} COMPLETE</div>
+            <div class="progress">
+              <div style="width:${pct}%"></div>
+            </div>
+          </div>
+        `;
+      }).join("")
+    }</div>`;
+}
+
+loadAll();
 </script>
 
 </body>
