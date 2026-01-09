@@ -2,7 +2,7 @@
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>Sistem Penjejak Pematuhan & SRR Akreditasi Program PPKPK (PPKPK Programme Accreditation Compliance & SRR Tracker System) </title>
+  <title>PPKPK Programme Accreditation Compliance & SRR Tracker</title>
 
   <style>
     body {
@@ -11,13 +11,11 @@
       padding: 24px;
     }
 
-    h2 {
-      margin-bottom: 20px;
-    }
+    h2 { margin-bottom: 20px; }
 
     .grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(420px, 1fr));
+      grid-template-columns: repeat(auto-fill, minmax(460px, 1fr));
       gap: 20px;
     }
 
@@ -28,33 +26,16 @@
       box-shadow: 0 4px 12px rgba(0,0,0,0.08);
     }
 
-    .card h3 {
-      margin: 0 0 6px;
-    }
-
-    .centre {
-      font-size: 14px;
-      color: #666;
-      margin-bottom: 8px;
-    }
-
     .badge {
       display: inline-block;
       padding: 4px 12px;
       border-radius: 20px;
       font-size: 12px;
-      margin-bottom: 10px;
+      margin: 6px 0;
     }
 
-    .badge.ready {
-      background: #e6fff0;
-      color: #007a3d;
-    }
-
-    .badge.not-ready {
-      background: #ffecec;
-      color: #b00020;
-    }
+    .ready { background:#e6fff0; color:#007a3d; }
+    .not-ready { background:#ffecec; color:#b00020; }
 
     .tabs {
       display: flex;
@@ -65,7 +46,6 @@
     .tab {
       background: none;
       border: none;
-      padding: 6px 0;
       font-weight: bold;
       cursor: pointer;
       color: #555;
@@ -76,53 +56,52 @@
       color: #2563eb;
     }
 
-    .tab-content {
+    .meta p {
       font-size: 14px;
+      margin: 4px 0;
     }
 
     button {
       padding: 6px 10px;
       border-radius: 6px;
       border: 1px solid #ccc;
-      cursor: pointer;
       background: #fff;
+      cursor: pointer;
     }
 
     /* MODAL */
     #studentModal {
-      display: none;
-      position: fixed;
-      inset: 0;
-      background: rgba(0,0,0,0.5);
-      z-index: 9999;
-      padding: 40px;
+      display:none;
+      position:fixed;
+      inset:0;
+      background:rgba(0,0,0,0.5);
+      padding:40px;
+      z-index:9999;
     }
 
     #studentModal .box {
-      background: white;
-      border-radius: 12px;
-      padding: 20px;
-      max-width: 900px;
-      margin: auto;
-      max-height: 80vh;
-      overflow: auto;
+      background:white;
+      border-radius:12px;
+      padding:20px;
+      max-width:900px;
+      margin:auto;
+      max-height:80vh;
+      overflow:auto;
     }
 
     table {
-      width: 100%;
-      border-collapse: collapse;
-      margin-top: 10px;
+      width:100%;
+      border-collapse:collapse;
+      margin-top:10px;
     }
 
     th, td {
-      border: 1px solid #ccc;
-      padding: 6px;
-      font-size: 13px;
+      border:1px solid #ccc;
+      padding:6px;
+      font-size:13px;
     }
 
-    th {
-      background: #eee;
-    }
+    th { background:#eee; }
   </style>
 </head>
 
@@ -153,13 +132,47 @@
 
 <script>
 /* =========================
-   CONFIGURATION
+   CONFIG
    ========================= */
 const API_URL =
   "https://script.google.com/macros/s/AKfycbzveYXbtD0_WdOmaX5pXapE4mBZoT9lsMlLSi7nM8iGyErZ69WjJKRoBre9Wy6MTjXbkg/exec";
 
-/* SRR RULE: programme READY if graduan >= this value */
 const MIN_GRADUAN_FOR_SRR = 3;
+
+/* =========================
+   PROGRAMME REGISTRY
+   ========================= */
+const PROGRAMME_INFO = {
+  "Master of Science (Chemistry)": {
+    owner: "Not own",
+    centre: "Pusat Pengajian Sains Kimia",
+    mqa: "MQA/SWA10625",
+    nec: "0531 (Chemistry)",
+    pic: "Noorfatimah binti Yahaya"
+  },
+  "Master of Science (Biomedicine)": {
+    owner: "Not own",
+    centre: "Pusat Pengajian Sains Kesihatan",
+    mqa: "MQA/SWA10593",
+    nec: "0912 (Medicine)",
+    pic: "Rabiatul Basria binti S.M.N.Mydin"
+  },
+  "Master of Science (Lifestyle Science)": {
+    owner: "OWN",
+    centre: "-",
+    mqa: "-",
+    nec: "-",
+    pic: "Teoh Soo Huat"
+  },
+  "Doctor of Philosophy (Minden)": {
+    owner: "Not own",
+    centre: "Kampus Kesihatan",
+    mqa: "MQA/SWA10573",
+    nec: "0910 (Health not further defined)",
+    pic: "Lim Vuanghao"
+  }
+  // 👉 more can be added anytime
+};
 
 /* =========================
    LOAD DASHBOARD
@@ -176,17 +189,16 @@ async function loadProgrammeDashboard() {
 
     if (!programmes[prog]) {
       programmes[prog] = {
-        name: prog,
-        centre: s["ACADEMIC PROGRAM"],
-        pic: s["PENYELIA UTAMA"],
         students: [],
         aktif: 0,
         graduan: 0,
-        tangguh: 0
+        tangguh: 0,
+        team: new Set()
       };
     }
 
     programmes[prog].students.push(s);
+    programmes[prog].team.add(s["PENYELIA UTAMA"]);
 
     if (s["STATUS PENGAJIAN"] === "AKTIF") programmes[prog].aktif++;
     if (s["STATUS PENGAJIAN"] === "BERIJAZAH") programmes[prog].graduan++;
@@ -196,16 +208,15 @@ async function loadProgrammeDashboard() {
   const grid = document.getElementById("programmeGrid");
   grid.innerHTML = "";
 
-  Object.values(programmes).forEach(p => {
+  Object.entries(programmes).forEach(([name, p]) => {
+    const info = PROGRAMME_INFO[name] || {};
     const ready = p.graduan >= MIN_GRADUAN_FOR_SRR;
 
     const card = document.createElement("div");
     card.className = "card";
 
     card.innerHTML = `
-      <h3>${p.name}</h3>
-      <div class="centre">${p.centre || ""}</div>
-
+      <h3>${name}</h3>
       <span class="badge ${ready ? "ready" : "not-ready"}">
         ${ready ? "READY" : "NOT READY"}
       </span>
@@ -216,8 +227,13 @@ async function loadProgrammeDashboard() {
         <button class="tab" onclick="switchTab(this,'docs')">Documents</button>
       </div>
 
-      <div class="tab-content overview">
-        <p><b>PIC:</b> ${p.pic || "-"}</p>
+      <div class="tab-content overview meta">
+        <p><b>Owner:</b> ${info.owner || "-"}</p>
+        <p><b>Centre:</b> ${info.centre || "-"}</p>
+        <p><b>NO MQA:</b> ${info.mqa || "-"}</p>
+        <p><b>NEC:</b> ${info.nec || "-"}</p>
+        <p><b>PIC:</b> ${info.pic || "-"}</p>
+        <p><b>Team:</b> ${[...p.team].join(", ")}</p>
         <p>
           Aktif: ${p.aktif} |
           Graduan: ${p.graduan} |
@@ -229,15 +245,15 @@ async function loadProgrammeDashboard() {
       </div>
 
       <div class="tab-content coppa" style="display:none">
-        <p>✔ COPPA mapping</p>
-        <p>✔ Assessment alignment</p>
-        <p>✔ Learning outcomes evidence</p>
+        <p>✔ Programme Learning Outcomes</p>
+        <p>✔ Assessment mapping</p>
+        <p>✔ Continuous quality improvement</p>
       </div>
 
       <div class="tab-content docs" style="display:none">
-        <p>📄 Programme Curriculum</p>
-        <p>📄 Assessment Rubrics</p>
-        <p>📄 External Examiner Report</p>
+        <p>📄 Programme curriculum</p>
+        <p>📄 Course files</p>
+        <p>📄 External examiner reports</p>
       </div>
     `;
 
@@ -246,7 +262,7 @@ async function loadProgrammeDashboard() {
 }
 
 /* =========================
-   TAB SWITCHING
+   TABS
    ========================= */
 function switchTab(btn, tab) {
   const card = btn.closest(".card");
@@ -258,7 +274,7 @@ function switchTab(btn, tab) {
 }
 
 /* =========================
-   STUDENT MODAL
+   MODAL
    ========================= */
 function openStudents(students) {
   const body = document.getElementById("studentBody");
