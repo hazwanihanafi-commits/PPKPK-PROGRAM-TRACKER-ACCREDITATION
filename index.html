@@ -57,12 +57,12 @@ h1{margin-bottom:20px}
 .progress-ring{
   width:90px;height:90px;
   border-radius:50%;
-  background:conic-gradient(#2563eb 0%,#e5e7eb 0);
   display:flex;
   align-items:center;
   justify-content:center;
   font-weight:700;
   margin:10px 0;
+  background:#e5e7eb;
 }
 
 /* COPPA */
@@ -85,7 +85,7 @@ h1{margin-bottom:20px}
 
 .appendix{
   display:grid;
-  grid-template-columns:80px 1fr 120px 1fr 70px;
+  grid-template-columns:70px 1fr 80px 1fr 60px;
   gap:8px;
   align-items:center;
   font-size:13px;
@@ -98,6 +98,7 @@ h1{margin-bottom:20px}
   padding:4px;
   font-size:12px;
 }
+
 .save{
   background:#2563eb;
   color:white;
@@ -149,7 +150,8 @@ async function loadDashboard(){
         ketua:r["KETUA PROGRAM"],
         team:new Set(),
         students:[],
-        aktif:0,graduan:0
+        aktif:0,
+        graduan:0
       };
     }
 
@@ -188,17 +190,18 @@ function render(programmes){
         ${ready?"READY":"NOT READY"}
       </span>
 
-      <div class="progress-ring" style="
-        background:conic-gradient(#2563eb ${percent}%,#e5e7eb ${percent}%)
-      ">${percent}%</div>
-
-      <div class="tabs">
-        <div class="tab active" onclick="tab(this,'overview')">Overview</div>
-        <div class="tab" onclick="tab(this,'coppa')">COPPA / SRR</div>
-        <div class="tab" onclick="tab(this,'students')">Students</div>
+      <div class="progress-ring"
+        style="background:conic-gradient(#2563eb ${percent}%, #e5e7eb ${percent}%)">
+        ${percent}%
       </div>
 
-      <div class="section overview active">
+      <div class="tabs">
+        <div class="tab active" onclick="switchTab(this)">Overview</div>
+        <div class="tab" onclick="switchTab(this)">COPPA / SRR</div>
+        <div class="tab" onclick="switchTab(this)">Students</div>
+      </div>
+
+      <div class="section active">
         <p><b>MQR:</b> ${p.mqr}</p>
         <p><b>Centre:</b> ${p.centre}</p>
         <p><b>NEC:</b> ${p.nec}</p>
@@ -207,15 +210,27 @@ function render(programmes){
         <p>Aktif: ${p.aktif} | Graduan: ${p.graduan}</p>
       </div>
 
-      <div class="section coppa">
+      <div class="section">
         ${renderCoppa(p.appendix)}
       </div>
 
-      <div class="section students">
+      <div class="section">
         ${renderStudents(p.students)}
       </div>
     `;
     grid.appendChild(card);
+  });
+}
+
+/* ================= TABS ================= */
+function switchTab(el){
+  const card=el.closest(".card");
+  card.querySelectorAll(".tab").forEach(t=>t.classList.remove("active"));
+  el.classList.add("active");
+
+  const idx=[...el.parentNode.children].indexOf(el);
+  card.querySelectorAll(".section").forEach((s,i)=>{
+    s.classList.toggle("active",i===idx);
   });
 }
 
@@ -229,7 +244,8 @@ function renderCoppa(list){
 
   return Object.keys(g).map(area=>`
     <div class="area-box">
-      <div class="area-header" onclick="this.parentNode.classList.toggle('open')">
+      <div class="area-header"
+        onclick="this.parentNode.classList.toggle('open')">
         ${area}
         <span>${g[area].filter(x=>x.STATUS==="COMPLETE").length}/${g[area].length}</span>
       </div>
@@ -238,10 +254,12 @@ function renderCoppa(list){
           <div class="appendix">
             <b>${a["NO APPENDIX"]}</b>
             <span>${a.ITEM}</span>
-            <span>${a.STATUS}</span>
-            <input id="l-${a["NO APPENDIX"]}" value="${a.DOC_LINK||""}">
+            <span>${a.PIC_ROLE}</span>
+            <input id="l-${a["NO APPENDIX"]}"
+              placeholder="Paste link"
+              value="${a.DOC_LINK||""}">
             <button class="save"
-              onclick="save('${a["NO APPENDIX"]}')">Save</button>
+              onclick="saveLink('${a["NO APPENDIX"]}')">Save</button>
           </div>
         `).join("")}
       </div>
@@ -249,43 +267,44 @@ function renderCoppa(list){
   `).join("");
 }
 
-async function save(no){
-  const link=document.getElementById("l-"+no).value;
-  await fetch(APPENDIX_API,{
-    method:"POST",
-    body:JSON.stringify({
-      appendix:no,
-      status:link?"COMPLETE":"NOT STARTED",
-      doc_link:link
-    })
-  });
-  alert("Saved ✔");
-  loadDashboard();
-}
-
 /* ================= STUDENTS ================= */
 function renderStudents(list){
+  if(!list.length) return "<p>No student data</p>";
+
   return `
   <table>
-    <tr><th>No Matrik</th><th>Nama</th><th>Status</th></tr>
+    <tr>
+      <th>No Matrik</th>
+      <th>Nama</th>
+      <th>Status</th>
+    </tr>
     ${list.map(s=>`
       <tr>
         <td>${s["NO MATRIK"]||"-"}</td>
         <td>${s["NAMA PELAJAR"]||"-"}</td>
         <td>${s["STATUS PENGAJIAN"]||"-"}</td>
-      </tr>`).join("")}
+      </tr>
+    `).join("")}
   </table>`;
 }
 
-/* ================= TAB ================= */
-function tab(el,name){
-  const card=el.closest(".card");
-  card.querySelectorAll(".tab").forEach(t=>t.classList.remove("active"));
-  el.classList.add("active");
-  card.querySelectorAll(".section").forEach(s=>s.classList.remove("active"));
-  card.querySelector("."+name).classList.add("active");
+/* ================= SAVE ================= */
+async function saveLink(no){
+  const link=document.getElementById("l-"+no).value.trim();
+
+  await fetch(APPENDIX_API,{
+    method:"POST",
+    body:JSON.stringify({
+      appendix:no,
+      status: link ? "COMPLETE" : "",
+      doc_link: link
+    })
+  });
+
+  loadDashboard();
 }
 
+/* ================= INIT ================= */
 loadDashboard();
 </script>
 
