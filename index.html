@@ -2,7 +2,7 @@
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>PPKPK Programme Accreditation Compliance & SRR Tracker</title>
+  <title>Sistem Penjejak Pematuhan & SRR Akreditasi Program PPKPK (PPKPK Programme Accreditation Compliance & SRR Tracker System) </title>
 
   <style>
     body {
@@ -32,9 +32,15 @@
       margin: 0 0 6px;
     }
 
+    .centre {
+      font-size: 14px;
+      color: #666;
+      margin-bottom: 8px;
+    }
+
     .badge {
       display: inline-block;
-      padding: 4px 10px;
+      padding: 4px 12px;
       border-radius: 20px;
       font-size: 12px;
       margin-bottom: 10px;
@@ -50,80 +56,233 @@
       color: #b00020;
     }
 
-    .counts {
-      margin-top: 10px;
+    .tabs {
+      display: flex;
+      gap: 14px;
+      margin: 12px 0;
+    }
+
+    .tab {
+      background: none;
+      border: none;
+      padding: 6px 0;
+      font-weight: bold;
+      cursor: pointer;
+      color: #555;
+    }
+
+    .tab.active {
+      border-bottom: 2px solid #2563eb;
+      color: #2563eb;
+    }
+
+    .tab-content {
       font-size: 14px;
+    }
+
+    button {
+      padding: 6px 10px;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+      cursor: pointer;
+      background: #fff;
+    }
+
+    /* MODAL */
+    #studentModal {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.5);
+      z-index: 9999;
+      padding: 40px;
+    }
+
+    #studentModal .box {
+      background: white;
+      border-radius: 12px;
+      padding: 20px;
+      max-width: 900px;
+      margin: auto;
+      max-height: 80vh;
+      overflow: auto;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+    }
+
+    th, td {
+      border: 1px solid #ccc;
+      padding: 6px;
+      font-size: 13px;
+    }
+
+    th {
+      background: #eee;
     }
   </style>
 </head>
 
 <body>
 
-  <h2>PPKPK Programme Accreditation Compliance & SRR Tracker</h2>
+<h2>PPKPK Programme Accreditation Compliance & SRR Tracker</h2>
 
-  <div id="programmeGrid" class="grid"></div>
+<div id="programmeGrid" class="grid"></div>
 
-  <script>
-    const API_URL =
-      "https://script.google.com/macros/s/AKfycbzveYXbtD0_WdOmaX5pXapE4mBZoT9lsMlLSi7nM8iGyErZ69WjJKRoBre9Wy6MTjXbkg/exec";
+<!-- STUDENT MODAL -->
+<div id="studentModal">
+  <div class="box">
+    <h3>Student List</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>No Matrik</th>
+          <th>Nama Pelajar</th>
+          <th>Status Pengajian</th>
+        </tr>
+      </thead>
+      <tbody id="studentBody"></tbody>
+    </table>
+    <br>
+    <button onclick="closeStudents()">Close</button>
+  </div>
+</div>
 
-    async function loadProgrammeDashboard() {
-      try {
-        const res = await fetch(API_URL);
-        const data = await res.json();
+<script>
+/* =========================
+   CONFIGURATION
+   ========================= */
+const API_URL =
+  "https://script.google.com/macros/s/AKfycbzveYXbtD0_WdOmaX5pXapE4mBZoT9lsMlLSi7nM8iGyErZ69WjJKRoBre9Wy6MTjXbkg/exec";
 
-        const programmes = {};
+/* SRR RULE: programme READY if graduan >= this value */
+const MIN_GRADUAN_FOR_SRR = 3;
 
-        data.forEach(s => {
-          const programme = s["PROGRAM AKADEMIK"];
-          if (!programme) return;
+/* =========================
+   LOAD DASHBOARD
+   ========================= */
+async function loadProgrammeDashboard() {
+  const res = await fetch(API_URL);
+  const data = await res.json();
 
-          if (!programmes[programme]) {
-            programmes[programme] = {
-              aktif: 0,
-              graduan: 0,
-              tangguh: 0
-            };
-          }
+  const programmes = {};
 
-          if (s["STATUS PENGAJIAN"] === "AKTIF") programmes[programme].aktif++;
-          if (s["STATUS PENGAJIAN"] === "BERIJAZAH") programmes[programme].graduan++;
-          if (s["STATUS PENGAJIAN"] === "TANGGUH") programmes[programme].tangguh++;
-        });
+  data.forEach(s => {
+    const prog = s["PROGRAM AKADEMIK"];
+    if (!prog) return;
 
-        const grid = document.getElementById("programmeGrid");
-        grid.innerHTML = "";
-
-        Object.entries(programmes).forEach(([name, p]) => {
-          const ready = p.graduan > 0;
-
-          const card = document.createElement("div");
-          card.className = "card";
-
-          card.innerHTML = `
-            <h3>${name}</h3>
-            <span class="badge ${ready ? "ready" : "not-ready"}">
-              ${ready ? "READY" : "NOT READY"}
-            </span>
-            <div class="counts">
-              Aktif: ${p.aktif} |
-              Graduan: ${p.graduan} |
-              Tangguh: ${p.tangguh}
-            </div>
-          `;
-
-          grid.appendChild(card);
-        });
-
-      } catch (err) {
-        document.getElementById("programmeGrid").innerHTML =
-          "<p style='color:red'>Failed to load data.</p>";
-        console.error(err);
-      }
+    if (!programmes[prog]) {
+      programmes[prog] = {
+        name: prog,
+        centre: s["ACADEMIC PROGRAM"],
+        pic: s["PENYELIA UTAMA"],
+        students: [],
+        aktif: 0,
+        graduan: 0,
+        tangguh: 0
+      };
     }
 
-    loadProgrammeDashboard();
-  </script>
+    programmes[prog].students.push(s);
+
+    if (s["STATUS PENGAJIAN"] === "AKTIF") programmes[prog].aktif++;
+    if (s["STATUS PENGAJIAN"] === "BERIJAZAH") programmes[prog].graduan++;
+    if (s["STATUS PENGAJIAN"] === "TANGGUH") programmes[prog].tangguh++;
+  });
+
+  const grid = document.getElementById("programmeGrid");
+  grid.innerHTML = "";
+
+  Object.values(programmes).forEach(p => {
+    const ready = p.graduan >= MIN_GRADUAN_FOR_SRR;
+
+    const card = document.createElement("div");
+    card.className = "card";
+
+    card.innerHTML = `
+      <h3>${p.name}</h3>
+      <div class="centre">${p.centre || ""}</div>
+
+      <span class="badge ${ready ? "ready" : "not-ready"}">
+        ${ready ? "READY" : "NOT READY"}
+      </span>
+
+      <div class="tabs">
+        <button class="tab active" onclick="switchTab(this,'overview')">Overview</button>
+        <button class="tab" onclick="switchTab(this,'coppa')">COPPA Evidence</button>
+        <button class="tab" onclick="switchTab(this,'docs')">Documents</button>
+      </div>
+
+      <div class="tab-content overview">
+        <p><b>PIC:</b> ${p.pic || "-"}</p>
+        <p>
+          Aktif: ${p.aktif} |
+          Graduan: ${p.graduan} |
+          Tangguh: ${p.tangguh}
+        </p>
+        <button onclick='openStudents(${JSON.stringify(p.students)})'>
+          View Student List
+        </button>
+      </div>
+
+      <div class="tab-content coppa" style="display:none">
+        <p>✔ COPPA mapping</p>
+        <p>✔ Assessment alignment</p>
+        <p>✔ Learning outcomes evidence</p>
+      </div>
+
+      <div class="tab-content docs" style="display:none">
+        <p>📄 Programme Curriculum</p>
+        <p>📄 Assessment Rubrics</p>
+        <p>📄 External Examiner Report</p>
+      </div>
+    `;
+
+    grid.appendChild(card);
+  });
+}
+
+/* =========================
+   TAB SWITCHING
+   ========================= */
+function switchTab(btn, tab) {
+  const card = btn.closest(".card");
+  card.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
+  btn.classList.add("active");
+
+  card.querySelectorAll(".tab-content").forEach(c => c.style.display = "none");
+  card.querySelector("." + tab).style.display = "block";
+}
+
+/* =========================
+   STUDENT MODAL
+   ========================= */
+function openStudents(students) {
+  const body = document.getElementById("studentBody");
+  body.innerHTML = "";
+
+  students.forEach(s => {
+    body.innerHTML += `
+      <tr>
+        <td>${s["NO MATRIK"]}</td>
+        <td>${s["NAMA PELAJAR"]}</td>
+        <td>${s["STATUS PENGAJIAN"]}</td>
+      </tr>
+    `;
+  });
+
+  document.getElementById("studentModal").style.display = "block";
+}
+
+function closeStudents() {
+  document.getElementById("studentModal").style.display = "none";
+}
+
+loadProgrammeDashboard();
+</script>
 
 </body>
 </html>
