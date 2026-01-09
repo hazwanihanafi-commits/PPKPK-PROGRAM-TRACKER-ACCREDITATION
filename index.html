@@ -85,7 +85,7 @@ h1{margin-bottom:20px}
 
 .appendix{
   display:grid;
-  grid-template-columns:70px 1fr 80px 1fr 60px;
+  grid-template-columns:70px 1fr 90px 1fr 60px;
   gap:8px;
   align-items:center;
   font-size:13px;
@@ -151,20 +151,17 @@ async function loadDashboard(){
         team:new Set(),
         students:[],
         aktif:0,
-        graduan:0
+        graduan:0,
+        appendix: appendix
       };
     }
-
-    if(r["PENYELIA UTAMA"] && r["PENYELIA UTAMA"]!==r["KETUA PROGRAM"])
-      programmes[p].team.add(r["PENYELIA UTAMA"]);
 
     programmes[p].students.push(r);
     if(r["STATUS PENGAJIAN"]==="AKTIF") programmes[p].aktif++;
     if(r["STATUS PENGAJIAN"]==="BERIJAZAH") programmes[p].graduan++;
-  });
 
-  Object.values(programmes).forEach(p=>{
-    p.appendix = appendix;
+    if(r["PENYELIA UTAMA"] && r["PENYELIA UTAMA"]!==r["KETUA PROGRAM"])
+      programmes[p].team.add(r["PENYELIA UTAMA"]);
   });
 
   render(programmes);
@@ -177,7 +174,7 @@ function render(programmes){
 
   Object.values(programmes).forEach(p=>{
     const completed=p.appendix.filter(a=>a.STATUS==="COMPLETE").length;
-    const percent=Math.round(completed/p.appendix.length*100)||0;
+    const percent=Math.round((completed/p.appendix.length)*100)||0;
     const ready=p.graduan>0;
 
     const card=document.createElement("div");
@@ -186,9 +183,7 @@ function render(programmes){
     card.innerHTML=`
       <h3>${p.academic}</h3>
       <div>${p.bm}</div>
-      <span class="badge ${ready?"ready":"notready"}">
-        ${ready?"READY":"NOT READY"}
-      </span>
+      <span class="badge ${ready?"ready":"notready"}">${ready?"READY":"NOT READY"}</span>
 
       <div class="progress-ring"
         style="background:conic-gradient(#2563eb ${percent}%, #e5e7eb ${percent}%)">
@@ -210,13 +205,8 @@ function render(programmes){
         <p>Aktif: ${p.aktif} | Graduan: ${p.graduan}</p>
       </div>
 
-      <div class="section">
-        ${renderCoppa(p.appendix)}
-      </div>
-
-      <div class="section">
-        ${renderStudents(p.students)}
-      </div>
+      <div class="section">${renderCoppa(p.appendix)}</div>
+      <div class="section">${renderStudents(p.students)}</div>
     `;
     grid.appendChild(card);
   });
@@ -244,8 +234,7 @@ function renderCoppa(list){
 
   return Object.keys(g).map(area=>`
     <div class="area-box">
-      <div class="area-header"
-        onclick="this.parentNode.classList.toggle('open')">
+      <div class="area-header" onclick="this.parentNode.classList.toggle('open')">
         ${area}
         <span>${g[area].filter(x=>x.STATUS==="COMPLETE").length}/${g[area].length}</span>
       </div>
@@ -255,11 +244,8 @@ function renderCoppa(list){
             <b>${a["NO APPENDIX"]}</b>
             <span>${a.ITEM}</span>
             <span>${a.PIC_ROLE}</span>
-            <input id="l-${a["NO APPENDIX"]}"
-              placeholder="Paste link"
-              value="${a.DOC_LINK||""}">
-            <button class="save"
-              onclick="saveLink('${a["NO APPENDIX"]}')">Save</button>
+            <input id="l-${a["NO APPENDIX"]}" value="${a.DOC_LINK||""}" placeholder="Paste link">
+            <button class="save" onclick="saveLink('${a["NO APPENDIX"]}')">Save</button>
           </div>
         `).join("")}
       </div>
@@ -270,14 +256,9 @@ function renderCoppa(list){
 /* ================= STUDENTS ================= */
 function renderStudents(list){
   if(!list.length) return "<p>No student data</p>";
-
   return `
   <table>
-    <tr>
-      <th>No Matrik</th>
-      <th>Nama</th>
-      <th>Status</th>
-    </tr>
+    <tr><th>No Matrik</th><th>Nama</th><th>Status</th></tr>
     ${list.map(s=>`
       <tr>
         <td>${s["NO MATRIK"]||"-"}</td>
@@ -288,35 +269,30 @@ function renderStudents(list){
   </table>`;
 }
 
-<script>
 /* ================= SAVE ================= */
-async function save(no){
-  const input = document.getElementById("l-" + no);
-  if(!input) return alert("Input not found");
+async function saveLink(no){
+  const input=document.getElementById("l-"+no);
+  if(!input) return;
 
-  const link = input.value.trim();
+  const link=input.value.trim();
+  if(!link){ alert("Paste document link"); return; }
 
-  if(!link){
-    alert("Please paste document link");
-    return;
-  }
-
-  await fetch(APPENDIX_API, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify({
-      appendix: no,
-      status: "COMPLETE",
-      doc_link: link
+  await fetch(APPENDIX_API,{
+    method:"POST",
+    headers:{ "Content-Type":"application/json" },
+    body:JSON.stringify({
+      appendix:no,
+      status:"COMPLETE",
+      doc_link:link
     })
   });
 
-  alert("Saved & synced with Google Sheet");
-  loadDashboard(); // refresh data without reload page
+  loadDashboard();
 }
 
 /* ================= INIT ================= */
 loadDashboard();
 </script>
+
+</body>
+</html>
