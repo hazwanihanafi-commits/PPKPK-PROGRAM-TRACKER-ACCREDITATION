@@ -2,136 +2,149 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>PPKPK – Programme SRR Dashboard</title>
+<title>PPKPK – SRR Programme Readiness Dashboard</title>
 
 <style>
-body{
-  font-family:Arial,sans-serif;
+body {
+  font-family: Arial, sans-serif;
   background:#f6f8fb;
   padding:24px;
 }
 
-h2{margin-bottom:20px}
+h2 { margin-bottom:20px; }
 
-.grid{
+.grid {
   display:grid;
-  grid-template-columns:repeat(auto-fill,minmax(420px,1fr));
+  grid-template-columns:repeat(auto-fill,minmax(480px,1fr));
   gap:20px;
 }
 
-.card{
-  background:white;
+.card {
+  background:#fff;
   border-radius:14px;
   padding:20px;
-  box-shadow:0 6px 16px rgba(0,0,0,.08);
+  box-shadow:0 4px 12px rgba(0,0,0,.08);
 }
 
-.badge{
+.badge {
   display:inline-block;
-  padding:4px 12px;
+  padding:5px 14px;
   border-radius:20px;
   font-size:12px;
   margin:6px 0;
 }
+.ready { background:#e6fff0; color:#007a3d; }
+.not-ready { background:#ffecec; color:#b00020; }
 
-.ready{background:#e6fff0;color:#047857}
-.not{background:#ffecec;color:#991b1b}
+.progress {
+  background:#eee;
+  height:8px;
+  border-radius:10px;
+  overflow:hidden;
+  margin:10px 0;
+}
+.progress span {
+  display:block;
+  height:100%;
+  background:#2563eb;
+}
 
-button{
+.tabs {
+  display:flex;
+  gap:16px;
+  margin:14px 0;
+}
+.tab {
+  background:none;
+  border:none;
+  font-weight:bold;
+  cursor:pointer;
+  color:#555;
+}
+.tab.active {
+  color:#2563eb;
+  border-bottom:2px solid #2563eb;
+}
+
+.meta p { font-size:14px; margin:4px 0; }
+
+button {
   padding:6px 12px;
+  border-radius:6px;
+  border:1px solid #ccc;
+  background:#fff;
   cursor:pointer;
 }
 
 /* MODAL */
-#modal{
+#modal {
   display:none;
   position:fixed;
   inset:0;
   background:rgba(0,0,0,.5);
-  padding:30px;
+  padding:40px;
   z-index:9999;
 }
-
-.modal-box{
-  background:white;
-  max-width:1100px;
-  margin:auto;
-  padding:20px;
+#modal .box {
+  background:#fff;
   border-radius:14px;
-  max-height:90vh;
+  padding:20px;
+  max-width:1000px;
+  margin:auto;
+  max-height:85vh;
   overflow:auto;
 }
 
-.tabs{
-  display:flex;
-  gap:10px;
-  margin:12px 0;
+table {
+  width:100%;
+  border-collapse:collapse;
+  margin-top:10px;
 }
-
-.tabs button{
-  border:none;
-  background:#eee;
-  padding:6px 14px;
-  border-radius:20px;
+th,td {
+  border:1px solid #ccc;
+  padding:6px;
+  font-size:13px;
 }
-
-.tabs button.active{
-  background:#2563eb;
-  color:white;
-}
-
-.area-grid{
-  display:grid;
-  grid-template-columns:repeat(auto-fill,minmax(260px,1fr));
-  gap:14px;
-}
-
-.area-card{
-  border:1px solid #eee;
-  border-radius:10px;
-  padding:12px;
-  cursor:pointer;
-}
-
-.progress{
-  height:8px;
-  background:#eee;
-  border-radius:6px;
-  overflow:hidden;
-  margin-top:6px;
-}
-
-.progress div{
-  height:100%;
-  background:#22c55e;
-}
-
-.item{
-  border-bottom:1px solid #eee;
-  padding:10px 0;
-}
+th { background:#eee; }
 </style>
 </head>
 
 <body>
 
-<h2>📘 PPKPK – Programme SRR Dashboard</h2>
+<h2>📘 PPKPK – SRR Programme Readiness Dashboard</h2>
+
 <div id="programmeGrid" class="grid"></div>
 
-<!-- PROGRAMME MODAL -->
+<!-- MODAL -->
 <div id="modal">
-  <div class="modal-box">
+  <div class="box">
     <h3 id="modalTitle"></h3>
 
-    <div class="tabs">
-      <button class="active" onclick="showTab('overview')">Overview</button>
-      <button onclick="showTab('students')">Students</button>
-      <button onclick="showTab('coppa')">COPPA / Documents</button>
-    </div>
+    <h4>👥 Student List</h4>
+    <table>
+      <thead>
+        <tr>
+          <th>No Matrik</th>
+          <th>Nama Pelajar</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody id="studentBody"></tbody>
+    </table>
 
-    <div id="overviewTab"></div>
-    <div id="studentsTab" style="display:none"></div>
-    <div id="coppaTab" style="display:none"></div>
+    <h4 style="margin-top:20px">📂 COPPA / SRR Appendix</h4>
+    <table>
+      <thead>
+        <tr>
+          <th>Area</th>
+          <th>Appendix</th>
+          <th>Item</th>
+          <th>Status</th>
+          <th>Link</th>
+        </tr>
+      </thead>
+      <tbody id="appendixBody"></tbody>
+    </table>
 
     <br>
     <button onclick="closeModal()">Close</button>
@@ -146,180 +159,149 @@ const STUDENT_API =
 const APPENDIX_API =
 "https://script.google.com/macros/s/AKfycbzzfNBLau1GPNucFLHvLUc_78B5M21SbE2AYYzbIA6QOLucZ8KDHQeAtM01U90V3kPvSw/exec";
 
-let students = [];
-let appendix = [];
-let currentProgram = "";
+const TOTAL_APPENDIX = 56;
 
-/* ================= LOAD ALL ================= */
-async function loadAll(){
-  students = await (await fetch(STUDENT_API)).json();
-  appendix = await (await fetch(APPENDIX_API)).json();
-  renderPrograms();
-}
+/* ================= LOAD ================= */
+async function loadDashboard() {
+  const students = await fetch(STUDENT_API).then(r=>r.json());
+  const appendix = await fetch(APPENDIX_API).then(r=>r.json());
 
-/* ================= MAIN DASHBOARD ================= */
-function renderPrograms(){
-  const programs = {};
+  const programmes = {};
 
-  students.forEach(s=>{
-    const p = s["PROGRAM AKADEMIK"];
-    if(!p) return;
-    if(!programs[p]) programs[p]={students:[]};
-    programs[p].students.push(s);
+  students.forEach(row=>{
+    const prog = row["ACADEMIC PROGRAM"];
+    if (!prog) return;
+
+    if (!programmes[prog]) {
+      programmes[prog] = {
+        academic: row["ACADEMIC PROGRAM"],
+        bm: row["PROGRAM AKADEMIK"],
+        mqr: row["NO MQR"],
+        owner: row["PEMILIK PROGRAM"],
+        nec: row["NEC"],
+        ketua: row["KETUA PROGRAM"],
+        team:new Set(),
+        students:[],
+        complete:0
+      };
+    }
+
+    if (row["PENYELIA UTAMA"] &&
+        row["PENYELIA UTAMA"] !== programmes[prog].ketua) {
+      programmes[prog].team.add(row["PENYELIA UTAMA"]);
+    }
+
+    programmes[prog].students.push(row);
   });
+
+  // count appendix completion (shared for demo)
+  const completed = appendix.filter(a=>a.STATUS==="COMPLETE").length;
 
   const grid = document.getElementById("programmeGrid");
   grid.innerHTML="";
 
-  Object.entries(programs).forEach(([name,p])=>{
-    const grads = p.students.filter(
-      s=>s["STATUS PENGAJIAN"]==="BERIJAZAH"
-    ).length;
+  Object.values(programmes).forEach(p=>{
+    const percent = Math.round((completed / TOTAL_APPENDIX) * 100);
+    const ready = percent === 100;
 
-    grid.innerHTML+=`
-      <div class="card">
-        <h3>${name}</h3>
-        <span class="badge ${grads>0?"ready":"not"}">
-          ${grads>0?"READY":"NOT READY"}
-        </span>
-        <p>Graduan: ${grads}</p>
-        <button onclick="openProgramme('${name}')">
-          View Programme Dashboard
-        </button>
+    const card = document.createElement("div");
+    card.className="card";
+
+    card.innerHTML=`
+      <h3>${p.academic}</h3>
+      <div style="color:#666">${p.bm}</div>
+
+      <span class="badge ${ready?"ready":"not-ready"}">
+        ${ready?"READY":"NOT READY"}
+      </span>
+
+      <div class="progress">
+        <span style="width:${percent}%"></span>
+      </div>
+      <b>${percent}% COMPLETE</b><br>
+      ${completed}/${TOTAL_APPENDIX} appendix completed
+
+      <div class="tabs">
+        <button class="tab active" onclick="switchTab(this,'overview')">Overview</button>
+        <button class="tab" onclick="switchTab(this,'coppa')">COPPA Evidence</button>
+        <button class="tab" onclick="switchTab(this,'docs')">Documents</button>
+      </div>
+
+      <div class="tab-content overview meta">
+        <p><b>NO MQR:</b> ${p.mqr}</p>
+        <p><b>Owner:</b> ${p.owner}</p>
+        <p><b>NEC:</b> ${p.nec}</p>
+        <p><b>Ketua Program:</b> ${p.ketua}</p>
+        <p><b>Team:</b> ${[...p.team].join(", ")||"-"}</p>
+        <button onclick='openModal("${p.academic}")'>Open Programme</button>
+      </div>
+
+      <div class="tab-content coppa" style="display:none">
+        ✔ COPPA mapping<br>
+        ✔ Assessment alignment<br>
+        ✔ CQI evidence
+      </div>
+
+      <div class="tab-content docs" style="display:none">
+        SRR Report<br>
+        Course Files<br>
+        Examiner Reports
       </div>
     `;
+
+    grid.appendChild(card);
   });
 }
 
 /* ================= MODAL ================= */
-function openProgramme(program){
-  currentProgram = program;
+async function openModal(program) {
   document.getElementById("modalTitle").innerText = program;
-  showTab("overview");
-  loadOverview();
-  loadStudents();
-  loadCoppa();
   document.getElementById("modal").style.display="block";
+
+  const students = await fetch(STUDENT_API).then(r=>r.json());
+  const appendix = await fetch(APPENDIX_API).then(r=>r.json());
+
+  const sbody=document.getElementById("studentBody");
+  sbody.innerHTML="";
+  students.filter(s=>s["ACADEMIC PROGRAM"]===program)
+    .forEach(s=>{
+      sbody.innerHTML+=`
+      <tr>
+        <td>${s["NO MATRIK"]}</td>
+        <td>${s["NAMA PELAJAR"]}</td>
+        <td>${s["STATUS PENGAJIAN"]}</td>
+      </tr>`;
+    });
+
+  const abody=document.getElementById("appendixBody");
+  abody.innerHTML="";
+  appendix.forEach(a=>{
+    abody.innerHTML+=`
+    <tr>
+      <td>${a.APPENDIX}</td>
+      <td>${a["NO APPENDIX"]}</td>
+      <td>${a.ITEM}</td>
+      <td>${a.STATUS}</td>
+      <td>${a.DOC_LINK?
+        `<a href="${a.DOC_LINK}" target="_blank">View</a>`:"-"}</td>
+    </tr>`;
+  });
 }
 
 function closeModal(){
   document.getElementById("modal").style.display="none";
 }
 
-function showTab(tab){
-  ["overview","students","coppa"].forEach(t=>{
-    document.getElementById(t+"Tab").style.display =
-      t===tab?"block":"none";
-  });
-  document.querySelectorAll(".tabs button")
-    .forEach(b=>b.classList.remove("active"));
-  event.target.classList.add("active");
+/* ================= TABS ================= */
+function switchTab(btn,tab){
+  const card=btn.closest(".card");
+  card.querySelectorAll(".tab").forEach(t=>t.classList.remove("active"));
+  btn.classList.add("active");
+  card.querySelectorAll(".tab-content").forEach(c=>c.style.display="none");
+  card.querySelector("."+tab).style.display="block";
 }
 
-/* ================= OVERVIEW ================= */
-function loadOverview(){
-  const list = students.filter(
-    s=>s["PROGRAM AKADEMIK"]===currentProgram
-  );
-  const aktif = list.filter(
-    s=>s["STATUS PENGAJIAN"]==="AKTIF"
-  ).length;
-  const grad = list.filter(
-    s=>s["STATUS PENGAJIAN"]==="BERIJAZAH"
-  ).length;
-
-  document.getElementById("overviewTab").innerHTML=`
-    <p><b>Aktif:</b> ${aktif}</p>
-    <p><b>Graduan:</b> ${grad}</p>
-    <p><b>Jumlah Pelajar:</b> ${list.length}</p>
-  `;
-}
-
-/* ================= STUDENTS ================= */
-function loadStudents(){
-  const list = students.filter(
-    s=>s["PROGRAM AKADEMIK"]===currentProgram
-  );
-  document.getElementById("studentsTab").innerHTML =
-    list.map(s=>`
-      <p>👤 ${s["NAMA PELAJAR"]} — ${s["STATUS PENGAJIAN"]}</p>
-    `).join("");
-}
-
-/* ================= COPPA ================= */
-function loadCoppa(){
-  const areas={};
-  appendix.forEach(a=>{
-    if(!areas[a.APPENDIX]) areas[a.APPENDIX]=[];
-    areas[a.APPENDIX].push(a);
-  });
-
-  document.getElementById("coppaTab").innerHTML =
-    `<div class="area-grid">${
-      Object.entries(areas).map(([area,items])=>{
-        const done = items.filter(
-          i=>i.STATUS==="COMPLETE"
-        ).length;
-        const pct = Math.round(done/items.length*100);
-        return `
-          <div class="area-card" onclick="openArea('${area}')">
-            <b>${area}</b>
-            <div>${done}/${items.length} COMPLETE</div>
-            <div class="progress">
-              <div style="width:${pct}%"></div>
-            </div>
-          </div>
-        `;
-      }).join("")
-    }</div>`;
-}
-
-function openArea(area){
-  const list = appendix.filter(a=>a.APPENDIX===area);
-  document.getElementById("coppaTab").innerHTML =
-    `<h4>${area}</h4>${
-      list.map(a=>`
-        <div class="item">
-          <b>${a["NO APPENDIX"]}</b> – ${a.ITEM}<br>
-          PIC: ${a.PIC_ROLE}<br><br>
-          <label>
-            <input type="checkbox"
-              ${a.STATUS==="COMPLETE"?"checked":""}
-              onchange="updateStatus('${a["NO APPENDIX"]}',this.checked)">
-            COMPLETE
-          </label><br><br>
-          <input type="text"
-            placeholder="Paste Google Drive link"
-            value="${a.DOC_LINK||""}"
-            onchange="updateLink('${a["NO APPENDIX"]}',this.value)">
-        </div>
-      `).join("")
-    }`;
-}
-
-async function updateStatus(noAppendix,checked){
-  await fetch(APPENDIX_API,{
-    method:"POST",
-    body:JSON.stringify({
-      appendix:noAppendix,
-      status: checked?"COMPLETE":"NOT STARTED"
-    })
-  });
-  loadCoppa();
-}
-
-async function updateLink(noAppendix,link){
-  await fetch(APPENDIX_API,{
-    method:"POST",
-    body:JSON.stringify({
-      appendix:noAppendix,
-      status:"COMPLETE",
-      doc_link:link
-    })
-  });
-}
-
-loadAll();
+loadDashboard();
 </script>
 
 </body>
