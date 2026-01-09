@@ -6,90 +6,85 @@
 
 <style>
 body{
-  font-family:Arial, sans-serif;
-  background:#f5f7fb;
+  font-family:Inter, Arial, sans-serif;
+  background:#f6f8fb;
   padding:24px;
 }
-h2{margin-bottom:20px}
+
+h1{
+  margin-bottom:20px;
+}
 
 .grid{
   display:grid;
-  grid-template-columns:repeat(auto-fill,minmax(420px,1fr));
+  grid-template-columns:repeat(auto-fill,minmax(360px,1fr));
   gap:20px;
 }
 
 .card{
   background:white;
-  border-radius:16px;
-  padding:18px;
-  box-shadow:0 6px 18px rgba(0,0,0,.08);
+  border-radius:18px;
+  padding:20px;
+  box-shadow:0 10px 25px rgba(0,0,0,.08);
+}
+
+.card h3{
+  margin:0;
+}
+
+.sub{
+  color:#666;
+  font-size:14px;
+  margin-bottom:10px;
 }
 
 .badge{
   display:inline-block;
   padding:4px 12px;
-  border-radius:14px;
+  border-radius:20px;
   font-size:12px;
-  margin:6px 0;
-  font-weight:bold;
+  margin-bottom:12px;
 }
 
-.READY{background:#e6fff0;color:#047857}
-.NOTREADY{background:#ffecec;color:#b00020}
+.ready{background:#e6fff0;color:#047857}
+.notready{background:#ffecec;color:#b00020}
 
-.progress{
-  height:8px;
-  background:#e5e7eb;
-  border-radius:6px;
-  overflow:hidden;
-  margin:8px 0 12px;
-}
-.progress div{height:100%;background:#22c55e}
-
-.tabs{
+.progress-wrap{
   display:flex;
   gap:16px;
-  margin-bottom:10px;
-}
-.tab{
-  cursor:pointer;
-  font-weight:bold;
-  color:#555;
-}
-.tab.active{
-  color:#2563eb;
-  border-bottom:2px solid #2563eb;
-}
-
-table{
-  width:100%;
-  border-collapse:collapse;
-  font-size:13px;
-}
-th,td{
-  border:1px solid #ddd;
-  padding:6px;
-}
-th{background:#f1f5f9}
-
-.appendix-row{
-  display:grid;
-  grid-template-columns:80px 1fr 120px 1fr 80px;
-  gap:8px;
-  margin-bottom:6px;
   align-items:center;
 }
-.appendix-row input{
-  padding:5px;
-  border-radius:6px;
-  border:1px solid #ccc;
+
+.ring{
+  width:90px;
+  height:90px;
 }
-.appendix-row button{
-  padding:5px;
-  border:none;
-  border-radius:6px;
-  background:#2563eb;
-  color:white;
+
+.ring circle{
+  fill:none;
+  stroke-width:8;
+  stroke-linecap:round;
+}
+
+.ring-bg{stroke:#e5e7eb}
+.ring-val{stroke:#22c55e}
+
+.percent{
+  font-weight:bold;
+  font-size:18px;
+}
+
+.meta{
+  font-size:14px;
+  margin-top:6px;
+}
+
+button{
+  margin-top:14px;
+  padding:8px 14px;
+  border-radius:10px;
+  border:1px solid #ccc;
+  background:white;
   cursor:pointer;
 }
 </style>
@@ -97,28 +92,18 @@ th{background:#f1f5f9}
 
 <body>
 
-<h2>📘 PPKPK – Programme Accreditation Dashboard</h2>
-<div id="programmeGrid" class="grid"></div>
+<h1>📘 PPKPK – Programme Accreditation Dashboard</h1>
+
+<div class="grid" id="grid"></div>
 
 <script>
-const STUDENT_API =
-"https://script.google.com/macros/s/AKfycbzveYXbtD0_WdOmaX5pXapE4mBZoT9lsMlLSi7nM8iGyErZ69WjJKRoBre9Wy6MTjXbkg/exec";
-
-const APPENDIX_API =
+const API =
 "https://script.google.com/macros/s/AKfycbzzfNBLau1GPNucFLHvLUc_78B5M21SbE2AYYzbIA6QOLucZ8KDHQeAtM01U90V3kPvSw/exec";
 
-let appendixData=[];
+async function load(){
+  const res = await fetch(API);
+  const data = await res.json();
 
-/* ================= LOAD ALL ================= */
-async function init(){
-  appendixData = await (await fetch(APPENDIX_API)).json();
-  const students = await (await fetch(STUDENT_API)).json();
-  buildProgrammes(students);
-}
-init();
-
-/* ================= BUILD PROGRAM CARD ================= */
-function buildProgrammes(data){
   const programs={};
 
   data.forEach(r=>{
@@ -127,122 +112,65 @@ function buildProgrammes(data){
 
     if(!programs[p]){
       programs[p]={
-        name:p,
+        academic:p,
         bm:r["PROGRAM AKADEMIK"],
-        mqr:r["NO MQR"],
-        centre:r["PEMILIK PROGRAM"],
-        nec:r["NEC"],
-        ketua:r["KETUA PROGRAM"],
-        team:new Set(),
-        students:[]
+        total:0,
+        done:0
       };
     }
 
-    if(r["PENYELIA UTAMA"])
-      programs[p].team.add(r["PENYELIA UTAMA"]);
-
-    if(r["NO MATRIK"])
-      programs[p].students.push(r);
+    programs[p].total++;
+    if(r.STATUS==="COMPLETE") programs[p].done++;
   });
 
-  const grid=document.getElementById("programmeGrid");
-  grid.innerHTML="";
+  const grid=document.getElementById("grid");
 
   Object.values(programs).forEach(p=>{
-    const grads=p.students.filter(s=>s["STATUS PENGAJIAN"]==="BERIJAZAH").length;
-    const ready=grads>0;
+    const percent=Math.round((p.done/p.total)*100)||0;
+    const ready=percent===100;
+    const r=36;
+    const c=2*Math.PI*r;
+    const offset=c-(percent/100)*c;
 
-    const card=document.createElement("div");
-    card.className="card";
+    grid.innerHTML+=`
+      <div class="card">
+        <h3>${p.academic}</h3>
+        <div class="sub">${p.bm||""}</div>
 
-    card.innerHTML=`
-      <h3>${p.name}</h3>
-      <div style="color:#555">${p.bm}</div>
-      <span class="badge ${ready?"READY":"NOTREADY"}">
-        ${ready?"READY":"NOT READY"}
-      </span>
+        <div class="badge ${ready?"ready":"notready"}">
+          ${ready?"READY":"NOT READY"}
+        </div>
 
-      <div class="tabs">
-        <div class="tab active" onclick="tab(this,'overview')">Overview</div>
-        <div class="tab" onclick="tab(this,'students')">Students</div>
-        <div class="tab" onclick="tab(this,'coppa')">COPPA / SRR</div>
-      </div>
+        <div class="progress-wrap">
+          <svg class="ring" viewBox="0 0 100 100">
+            <circle class="ring-bg" cx="50" cy="50" r="${r}"/>
+            <circle class="ring-val"
+              cx="50" cy="50" r="${r}"
+              stroke-dasharray="${c}"
+              stroke-dashoffset="${offset}"
+              transform="rotate(-90 50 50)"/>
+          </svg>
 
-      <div class="panel overview">
-        <p><b>NO MQR:</b> ${p.mqr}</p>
-        <p><b>Centre:</b> ${p.centre}</p>
-        <p><b>NEC:</b> ${p.nec}</p>
-        <p><b>Ketua Program:</b> ${p.ketua}</p>
-        <p><b>Team:</b> ${[...p.team].join(", ")}</p>
-      </div>
+          <div>
+            <div class="percent">${percent}% Complete</div>
+            <div class="meta">${p.done} / ${p.total} appendix completed</div>
+          </div>
+        </div>
 
-      <div class="panel students" style="display:none">
-        ${studentTable(p.students)}
-      </div>
-
-      <div class="panel coppa" style="display:none">
-        ${coppaUI()}
+        <button onclick="openProgram('${encodeURIComponent(p.academic)}')">
+          View Programme Dashboard
+        </button>
       </div>
     `;
-
-    grid.appendChild(card);
   });
 }
 
-/* ================= STUDENT TABLE ================= */
-function studentTable(list){
-  if(list.length===0) return "<i>No students</i>";
-  let html=`<table><tr>
-    <th>No Matrik</th><th>Nama</th><th>Status</th></tr>`;
-  list.forEach(s=>{
-    html+=`
-    <tr>
-      <td>${s["NO MATRIK"]}</td>
-      <td>${s["NAMA PELAJAR"]}</td>
-      <td>${s["STATUS PENGAJIAN"]}</td>
-    </tr>`;
-  });
-  return html+"</table>";
+function openProgram(name){
+  window.location.href=
+    "programme.html?program="+name;
 }
 
-/* ================= COPPA UI ================= */
-function coppaUI(){
-  let html="";
-  appendixData.forEach(a=>{
-    html+=`
-    <div class="appendix-row">
-      <b>${a["NO APPENDIX"]}</b>
-      <div>${a.ITEM}</div>
-      <div>${a.STATUS}</div>
-      <input id="l-${a["NO APPENDIX"]}" value="${a.DOC_LINK||""}">
-      <button onclick="save('${a["NO APPENDIX"]}')">Save</button>
-    </div>`;
-  });
-  return html;
-}
-
-/* ================= SAVE APPENDIX ================= */
-async function save(no){
-  const link=document.getElementById("l-"+no).value;
-  await fetch(APPENDIX_API,{
-    method:"POST",
-    body:JSON.stringify({
-      appendix:no,
-      status:link?"COMPLETE":"IN PROGRESS",
-      doc_link:link
-    })
-  });
-  alert("Updated");
-}
-
-/* ================= TAB SWITCH ================= */
-function tab(el,name){
-  const card=el.closest(".card");
-  card.querySelectorAll(".tab").forEach(t=>t.classList.remove("active"));
-  el.classList.add("active");
-  card.querySelectorAll(".panel").forEach(p=>p.style.display="none");
-  card.querySelector("."+name).style.display="block";
-}
+load();
 </script>
 
 </body>
