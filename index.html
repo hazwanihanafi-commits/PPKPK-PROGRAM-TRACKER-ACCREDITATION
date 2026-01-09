@@ -92,7 +92,6 @@ h1{margin-bottom:20px}
   padding:6px 0;
   border-bottom:1px dashed #eee;
 }
-.appendix:last-child{border-bottom:none}
 
 .appendix input{
   padding:4px;
@@ -108,11 +107,6 @@ h1{margin-bottom:20px}
   cursor:pointer;
   padding:4px 6px;
 }
-
-/* table */
-table{width:100%;border-collapse:collapse;font-size:13px}
-th,td{border:1px solid #ddd;padding:6px}
-th{background:#f1f5f9}
 </style>
 </head>
 
@@ -131,40 +125,45 @@ const APPENDIX_API =
 
 /* ================= LOAD ================= */
 async function loadDashboard(){
-  const students = await (await fetch(STUDENT_API)).json();
-  const appendix = await (await fetch(APPENDIX_API)).json();
+  try{
+    const students = await (await fetch(STUDENT_API)).json();
+    const appendix = await (await fetch(APPENDIX_API)).json();
 
-  const programmes = {};
+    const programmes = {};
 
-  students.forEach(r=>{
-    const p = r["ACADEMIC PROGRAM"];
-    if(!p) return;
+    students.forEach(r=>{
+      const p = r["ACADEMIC PROGRAM"];
+      if(!p) return;
 
-    if(!programmes[p]){
-      programmes[p]={
-        academic:p,
-        bm:r["PROGRAM AKADEMIK"],
-        mqr:r["NO MQR"],
-        centre:r["PEMILIK PROGRAM"],
-        nec:r["NEC"],
-        ketua:r["KETUA PROGRAM"],
-        team:new Set(),
-        students:[],
-        aktif:0,
-        graduan:0,
-        appendix: appendix
-      };
-    }
+      if(!programmes[p]){
+        programmes[p]={
+          academic:p,
+          bm:r["PROGRAM AKADEMIK"],
+          mqr:r["NO MQR"],
+          centre:r["PEMILIK PROGRAM"],
+          nec:r["NEC"],
+          ketua:r["KETUA PROGRAM"],
+          team:new Set(),
+          students:[],
+          aktif:0,
+          graduan:0,
+          appendix:appendix
+        };
+      }
 
-    programmes[p].students.push(r);
-    if(r["STATUS PENGAJIAN"]==="AKTIF") programmes[p].aktif++;
-    if(r["STATUS PENGAJIAN"]==="BERIJAZAH") programmes[p].graduan++;
+      programmes[p].students.push(r);
+      if(r["STATUS PENGAJIAN"]==="AKTIF") programmes[p].aktif++;
+      if(r["STATUS PENGAJIAN"]==="BERIJAZAH") programmes[p].graduan++;
 
-    if(r["PENYELIA UTAMA"] && r["PENYELIA UTAMA"]!==r["KETUA PROGRAM"])
-      programmes[p].team.add(r["PENYELIA UTAMA"]);
-  });
+      if(r["PENYELIA UTAMA"] && r["PENYELIA UTAMA"]!==r["KETUA PROGRAM"])
+        programmes[p].team.add(r["PENYELIA UTAMA"]);
+    });
 
-  render(programmes);
+    render(programmes);
+  }catch(e){
+    console.error(e);
+    alert("❌ API error – check Google Apps Script deployment");
+  }
 }
 
 /* ================= RENDER ================= */
@@ -174,7 +173,7 @@ function render(programmes){
 
   Object.values(programmes).forEach(p=>{
     const completed=p.appendix.filter(a=>a.STATUS==="COMPLETE").length;
-    const percent=Math.round((completed/p.appendix.length)*100)||0;
+    const percent=Math.round(completed/p.appendix.length*100)||0;
     const ready=p.graduan>0;
 
     const card=document.createElement("div");
@@ -244,9 +243,8 @@ function renderCoppa(list){
             <b>${a["NO APPENDIX"]}</b>
             <span>${a.ITEM}</span>
             <span>${a.PIC_ROLE}</span>
-            <input id="l-${a["NO APPENDIX"]}" value="${a.DOC_LINK||""}" placeholder="Paste link">
-            <button class="save"onclick="saveLink(this)">Save</button>
-
+            <input value="${a.DOC_LINK||""}" placeholder="Paste link">
+            <button class="save" onclick="saveLink(this)">Save</button>
           </div>
         `).join("")}
       </div>
@@ -258,33 +256,31 @@ function renderCoppa(list){
 function renderStudents(list){
   if(!list.length) return "<p>No student data</p>";
   return `
-  <table>
-    <tr><th>No Matrik</th><th>Nama</th><th>Status</th></tr>
-    ${list.map(s=>`
-      <tr>
-        <td>${s["NO MATRIK"]||"-"}</td>
-        <td>${s["NAMA PELAJAR"]||"-"}</td>
-        <td>${s["STATUS PENGAJIAN"]||"-"}</td>
-      </tr>
-    `).join("")}
-  </table>`;
+    <table>
+      <tr><th>No Matrik</th><th>Nama</th><th>Status</th></tr>
+      ${list.map(s=>`
+        <tr>
+          <td>${s["NO MATRIK"]||"-"}</td>
+          <td>${s["NAMA PELAJAR"]||"-"}</td>
+          <td>${s["STATUS PENGAJIAN"]||"-"}</td>
+        </tr>
+      `).join("")}
+    </table>`;
 }
 
 /* ================= SAVE ================= */
-<script>
 async function saveLink(btn){
   const row = btn.closest(".appendix");
-  const input = row.querySelector("input");
   const no = row.querySelector("b").innerText.trim();
-  const link = input.value.trim();
+  const link = row.querySelector("input").value.trim();
 
   if(!link){
     alert("Paste document link");
     return;
   }
 
-  btn.innerText = "Saving...";
-  btn.disabled = true;
+  btn.innerText="Saving...";
+  btn.disabled=true;
 
   await fetch(APPENDIX_API,{
     method:"POST",
@@ -296,12 +292,14 @@ async function saveLink(btn){
     })
   });
 
-  btn.innerText = "Saved";
-  btn.style.background = "#16a34a";
+  btn.innerText="Saved";
+  btn.style.background="#16a34a";
 
-  // refresh dashboard state
   loadDashboard();
 }
+
+/* ================= INIT ================= */
+loadDashboard();
 </script>
 
 </body>
