@@ -1,41 +1,72 @@
-const API_URL = "PASTE_YOUR_APPS_SCRIPT_WEB_APP_URL_HERE";
+<script>
+const API_URL = "https://ppkpk-program-tracker-accreditation.onrender.com/";
 
-async function loadDashboard() {
+function groupByProgramme(data) {
+  const programmes = {};
+
+  data.forEach(s => {
+    const prog = s["PROGRAM AKADEMIK"];
+
+    if (!programmes[prog]) {
+      programmes[prog] = {
+        name: prog,
+        centre: s["ACADEMIC PROGRAM"],
+        aktif: 0,
+        graduan: 0,
+        tangguh: 0,
+        pic: s["PENYELIA UTAMA"],
+        team: new Set()
+      };
+    }
+
+    if (s["STATUS PENGAJIAN"] === "AKTIF") programmes[prog].aktif++;
+    if (s["STATUS PENGAJIAN"] === "BERIJAZAH") programmes[prog].graduan++;
+    if (s["STATUS PENGAJIAN"] === "TANGGUH") programmes[prog].tangguh++;
+
+    programmes[prog].team.add(s["PENYELIA UTAMA"]);
+  });
+
+  return programmes;
+}
+
+async function loadProgrammeDashboard() {
   const res = await fetch(API_URL);
   const data = await res.json();
 
-  const tbody = document.querySelector("#srrTable tbody");
-  tbody.innerHTML = "";
+  const programmes = groupByProgramme(data);
+  const container = document.getElementById("programmeGrid");
+  container.innerHTML = "";
 
-  data.forEach(s => {
-    const ready = s["STATUS PENGAJIAN"] === "BERJAZAH";
-    const row = document.createElement("tr");
-    if (ready) row.classList.add("ready");
+  Object.values(programmes).forEach(p => {
+    const ready = p.graduan > 0;
 
-    row.innerHTML = `
-      <td>${s["NO MATRIK"]}</td>
-      <td>${s["NAMA PELAJAR"]}</td>
-      <td>${s["PROGRAM AKADEMIK"]}</td>
-      <td>${s["STATUS PENGAJIAN"]}</td>
-      <td style="text-align:center">
-        <input type="checkbox" ${ready ? "checked" : ""}
-          onchange="updateSRR('${s["NO MATRIK"]}', this.checked)">
-      </td>
+    container.innerHTML += `
+      <div class="card">
+        <h3>${p.name}</h3>
+        <p class="centre">${p.centre}</p>
+
+        <span class="badge ${ready ? "ready" : "not-ready"}">
+          ${ready ? "READY" : "NOT READY"}
+        </span>
+
+        <div class="tabs">
+          <button class="active">Overview</button>
+          <button>COPPA Evidence</button>
+          <button>Documents</button>
+        </div>
+
+        <p><b>PIC:</b> ${p.pic}</p>
+        <p><b>Team:</b> ${[...p.team].join(", ")}</p>
+
+        <p>
+          Aktif: ${p.aktif} |
+          Graduan: ${p.graduan} |
+          Tangguh: ${p.tangguh}
+        </p>
+      </div>
     `;
-    tbody.appendChild(row);
   });
 }
 
-async function updateSRR(noMatrik, checked) {
-  await fetch(API_URL, {
-    method: "POST",
-    body: JSON.stringify({
-      no_matrik: noMatrik,
-      ready_srr: checked ? "BERJAZAH" : "AKTIF"
-    })
-  });
-
-  loadDashboard();
-}
-
-loadDashboard();
+loadProgrammeDashboard();
+</script>
