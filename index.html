@@ -2,49 +2,73 @@
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>SRR Readiness Dashboard</title>
+  <title>PPKPK Programme Accreditation Compliance & SRR Tracker</title>
+
+  <!-- CSS (Step 4) -->
   <style>
-    body {
-      font-family: Arial, sans-serif;
-      padding: 20px;
-      background: #f9f9f9;
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(420px, 1fr));
+      gap: 20px;
     }
-    table {
-      width: 100%;
-      border-collapse: collapse;
+
+    .card {
       background: white;
+      border-radius: 12px;
+      padding: 20px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.08);
     }
-    th, td {
-      border: 1px solid #ccc;
-      padding: 8px;
-      text-align: left;
-    }
-    th {
-      background: #eaeaea;
-    }
-    tr.ready {
-      background-color: #e6ffe6;
-    }
+
+    .badge.ready { background:#e6fff0; color:#007a3d; }
+    .badge.not-ready { background:#ffecec; color:#b00020; }
   </style>
 </head>
+
 <body>
 
-<h2>SRR Readiness Dashboard</h2>
-<p>Tick <b>Ready for SRR</b> to update Google Sheet automatically.</p>
+  <!-- ✅ STEP 3 GOES HERE -->
+  <h2>PPKPK Programme Accreditation Compliance & SRR Tracker</h2>
+  <div id="programmeGrid" class="grid"></div>
 
-<table id="srrTable">
-  <thead>
-    <tr>
-      <th>No Matrik</th>
-      <th>Nama Pelajar</th>
-      <th>Program Akademik</th>
-      <th>Status Pengajian</th>
-      <th>Ready for SRR</th>
-    </tr>
-  </thead>
-  <tbody></tbody>
-</table>
+  <!-- JavaScript (Step 2) -->
+  <script>
+    const API_URL = "YOUR_APPS_SCRIPT_WEB_APP_URL";
 
-<script src="script.js"></script>
+    async function loadProgrammeDashboard() {
+      const res = await fetch(API_URL);
+      const data = await res.json();
+
+      const programmes = {};
+      data.forEach(s => {
+        const p = s["PROGRAM AKADEMIK"];
+        if (!programmes[p]) {
+          programmes[p] = { aktif:0, graduan:0, tangguh:0 };
+        }
+        if (s["STATUS PENGAJIAN"] === "AKTIF") programmes[p].aktif++;
+        if (s["STATUS PENGAJIAN"] === "BERIJAZAH") programmes[p].graduan++;
+        if (s["STATUS PENGAJIAN"] === "TANGGUH") programmes[p].tangguh++;
+      });
+
+      const grid = document.getElementById("programmeGrid");
+      grid.innerHTML = "";
+
+      Object.entries(programmes).forEach(([name, p]) => {
+        const ready = p.graduan > 0;
+
+        grid.innerHTML += `
+          <div class="card">
+            <h3>${name}</h3>
+            <span class="badge ${ready ? "ready" : "not-ready"}">
+              ${ready ? "READY" : "NOT READY"}
+            </span>
+            <p>Aktif: ${p.aktif} | Graduan: ${p.graduan} | Tangguh: ${p.tangguh}</p>
+          </div>
+        `;
+      });
+    }
+
+    loadProgrammeDashboard();
+  </script>
+
 </body>
 </html>
