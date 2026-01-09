@@ -270,12 +270,20 @@ function renderStudents(list){
 }
 
 /* ================= SAVE ================= */
-async function saveLink(no){
-  const input=document.getElementById("l-"+no);
-  if(!input) return;
+<script>
+async function saveLink(btn){
+  const row = btn.closest(".appendix");
+  const input = row.querySelector("input");
+  const no = row.querySelector("b").innerText.trim();
+  const link = input.value.trim();
 
-  const link=input.value.trim();
-  if(!link){ alert("Paste document link"); return; }
+  if(!link){
+    alert("Paste document link");
+    return;
+  }
+
+  btn.innerText = "Saving...";
+  btn.disabled = true;
 
   await fetch(APPENDIX_API,{
     method:"POST",
@@ -287,11 +295,12 @@ async function saveLink(no){
     })
   });
 
+  btn.innerText = "Saved";
+  btn.style.background = "#16a34a";
+
+  // refresh dashboard state
   loadDashboard();
 }
-
-/* ================= INIT ================= */
-loadDashboard();
 </script>
 
 </body>
