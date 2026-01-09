@@ -2,7 +2,7 @@
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>PPKPK Programme Accreditation Compliance & SRR Tracker</title>
+  <title>Sistem Penjejak Pematuhan & SRR Akreditasi Program PPKPK (PPKPK Programme Accreditation Compliance & SRR Tracker System)</title>
 
   <style>
     body {
@@ -15,7 +15,7 @@
 
     .grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(460px, 1fr));
+      grid-template-columns: repeat(auto-fill, minmax(480px, 1fr));
       gap: 20px;
     }
 
@@ -107,7 +107,7 @@
 
 <body>
 
-<h2>PPKPK Programme Accreditation Compliance & SRR Tracker</h2>
+<h2>Sistem Penjejak Pematuhan & SRR Akreditasi Program PPKPK (PPKPK Programme Accreditation Compliance & SRR Tracker System)</h2>
 
 <div id="programmeGrid" class="grid"></div>
 
@@ -137,42 +137,8 @@
 const API_URL =
   "https://script.google.com/macros/s/AKfycbzveYXbtD0_WdOmaX5pXapE4mBZoT9lsMlLSi7nM8iGyErZ69WjJKRoBre9Wy6MTjXbkg/exec";
 
-const MIN_GRADUAN_FOR_SRR = 3;
-
-/* =========================
-   PROGRAMME REGISTRY
-   ========================= */
-const PROGRAMME_INFO = {
-  "Master of Science (Chemistry)": {
-    owner: "Not own",
-    centre: "Pusat Pengajian Sains Kimia",
-    mqa: "MQA/SWA10625",
-    nec: "0531 (Chemistry)",
-    pic: "Noorfatimah binti Yahaya"
-  },
-  "Master of Science (Biomedicine)": {
-    owner: "Not own",
-    centre: "Pusat Pengajian Sains Kesihatan",
-    mqa: "MQA/SWA10593",
-    nec: "0912 (Medicine)",
-    pic: "Rabiatul Basria binti S.M.N.Mydin"
-  },
-  "Master of Science (Lifestyle Science)": {
-    owner: "OWN",
-    centre: "-",
-    mqa: "-",
-    nec: "-",
-    pic: "Teoh Soo Huat"
-  },
-  "Doctor of Philosophy (Minden)": {
-    owner: "Not own",
-    centre: "Kampus Kesihatan",
-    mqa: "MQA/SWA10573",
-    nec: "0910 (Health not further defined)",
-    pic: "Lim Vuanghao"
-  }
-  // 👉 more can be added anytime
-};
+/* SRR rule: programme READY if graduan >= this */
+const MIN_GRADUAN_FOR_SRR = 1;
 
 /* =========================
    LOAD DASHBOARD
@@ -183,40 +149,52 @@ async function loadProgrammeDashboard() {
 
   const programmes = {};
 
-  data.forEach(s => {
-    const prog = s["PROGRAM AKADEMIK"];
+  data.forEach(row => {
+    const prog = row["PROGRAM AKADEMIK"];
     if (!prog) return;
 
     if (!programmes[prog]) {
       programmes[prog] = {
+        academic: row["ACADEMIC PROGRAM"],
+        bm: row["PROGRAM AKADEMIK"],
+        mqr: row["NO MQR"],
+        centre: row["PEMILIK PROGRAM"],
+        nec: row["NEC"],
+        ketua: row["KETUA PROGRAM"],
+        team: new Set(),
         students: [],
         aktif: 0,
         graduan: 0,
-        tangguh: 0,
-        team: new Set()
+        tangguh: 0
       };
     }
 
-    programmes[prog].students.push(s);
-    programmes[prog].team.add(s["PENYELIA UTAMA"]);
+    // team members = other lecturers in same programme
+    if (row["PENYELIA UTAMA"])
+      programmes[prog].team.add(row["PENYELIA UTAMA"]);
 
-    if (s["STATUS PENGAJIAN"] === "AKTIF") programmes[prog].aktif++;
-    if (s["STATUS PENGAJIAN"] === "BERIJAZAH") programmes[prog].graduan++;
-    if (s["STATUS PENGAJIAN"] === "TANGGUH") programmes[prog].tangguh++;
+    // student status (if present)
+    if (row["STATUS PENGAJIAN"]) {
+      programmes[prog].students.push(row);
+      if (row["STATUS PENGAJIAN"] === "AKTIF") programmes[prog].aktif++;
+      if (row["STATUS PENGAJIAN"] === "BERIJAZAH") programmes[prog].graduan++;
+      if (row["STATUS PENGAJIAN"] === "TANGGUH") programmes[prog].tangguh++;
+    }
   });
 
   const grid = document.getElementById("programmeGrid");
   grid.innerHTML = "";
 
-  Object.entries(programmes).forEach(([name, p]) => {
-    const info = PROGRAMME_INFO[name] || {};
+  Object.values(programmes).forEach(p => {
     const ready = p.graduan >= MIN_GRADUAN_FOR_SRR;
 
     const card = document.createElement("div");
     card.className = "card";
 
     card.innerHTML = `
-      <h3>${name}</h3>
+      <h3>${p.academic}</h3>
+      <div style="font-size:14px;color:#666">${p.bm}</div>
+
       <span class="badge ${ready ? "ready" : "not-ready"}">
         ${ready ? "READY" : "NOT READY"}
       </span>
@@ -228,12 +206,11 @@ async function loadProgrammeDashboard() {
       </div>
 
       <div class="tab-content overview meta">
-        <p><b>Owner:</b> ${info.owner || "-"}</p>
-        <p><b>Centre:</b> ${info.centre || "-"}</p>
-        <p><b>NO MQA:</b> ${info.mqa || "-"}</p>
-        <p><b>NEC:</b> ${info.nec || "-"}</p>
-        <p><b>PIC:</b> ${info.pic || "-"}</p>
-        <p><b>Team:</b> ${[...p.team].join(", ")}</p>
+        <p><b>NO MQR:</b> ${p.mqr || "-"}</p>
+        <p><b>Centre:</b> ${p.centre || "-"}</p>
+        <p><b>NEC:</b> ${p.nec || "-"}</p>
+        <p><b>Ketua Program:</b> ${p.ketua || "-"}</p>
+        <p><b>Team Members:</b> ${[...p.team].join(", ") || "-"}</p>
         <p>
           Aktif: ${p.aktif} |
           Graduan: ${p.graduan} |
@@ -245,15 +222,15 @@ async function loadProgrammeDashboard() {
       </div>
 
       <div class="tab-content coppa" style="display:none">
-        <p>✔ Programme Learning Outcomes</p>
-        <p>✔ Assessment mapping</p>
-        <p>✔ Continuous quality improvement</p>
+        <p>✔ COPPA mapping</p>
+        <p>✔ Assessment alignment</p>
+        <p>✔ CQI evidence</p>
       </div>
 
       <div class="tab-content docs" style="display:none">
-        <p>📄 Programme curriculum</p>
-        <p>📄 Course files</p>
-        <p>📄 External examiner reports</p>
+        <p>📄 SRR Report</p>
+        <p>📄 Course Files</p>
+        <p>📄 External Examiner Reports</p>
       </div>
     `;
 
@@ -274,7 +251,7 @@ function switchTab(btn, tab) {
 }
 
 /* =========================
-   MODAL
+   STUDENT MODAL
    ========================= */
 function openStudents(students) {
   const body = document.getElementById("studentBody");
@@ -283,9 +260,9 @@ function openStudents(students) {
   students.forEach(s => {
     body.innerHTML += `
       <tr>
-        <td>${s["NO MATRIK"]}</td>
-        <td>${s["NAMA PELAJAR"]}</td>
-        <td>${s["STATUS PENGAJIAN"]}</td>
+        <td>${s["NO MATRIK"] || "-"}</td>
+        <td>${s["NAMA PELAJAR"] || "-"}</td>
+        <td>${s["STATUS PENGAJIAN"] || "-"}</td>
       </tr>
     `;
   });
