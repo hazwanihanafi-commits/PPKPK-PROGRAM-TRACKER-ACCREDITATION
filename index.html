@@ -245,7 +245,8 @@ function renderCoppa(list){
             <span>${a.ITEM}</span>
             <span>${a.PIC_ROLE}</span>
             <input id="l-${a["NO APPENDIX"]}" value="${a.DOC_LINK||""}" placeholder="Paste link">
-            <button class="save" onclick="saveLink('${a["NO APPENDIX"]}')">Save</button>
+            <button class="save"onclick="saveLink(this)">Save</button>
+
           </div>
         `).join("")}
       </div>
