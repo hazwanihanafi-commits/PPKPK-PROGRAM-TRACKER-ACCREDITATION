@@ -1,107 +1,82 @@
 <!DOCTYPE html>
 <html>
 <head>
-<meta charset="UTF-8">
+<meta charset="UTF-8" />
 <title>PPKPK – Programme Accreditation Dashboard</title>
 
 <style>
-body{
-  font-family:Inter,Arial;
-  background:#f5f7fb;
-  margin:0;
+body {
+  font-family: Inter, Arial, sans-serif;
+  background:#f6f8fb;
   padding:30px;
 }
-h1{margin-bottom:20px}
+h1 { margin-bottom:20px; }
 
-.grid{
+.grid {
   display:grid;
-  grid-template-columns:repeat(auto-fill,minmax(360px,1fr));
+  grid-template-columns:repeat(auto-fill,minmax(380px,1fr));
   gap:20px;
 }
-.card{
-  background:white;
+
+.card {
+  background:#fff;
   border-radius:14px;
   padding:20px;
-  box-shadow:0 10px 25px rgba(0,0,0,.08);
+  box-shadow:0 8px 20px rgba(0,0,0,.08);
 }
-.badge{
+
+.badge {
   display:inline-block;
-  padding:6px 14px;
+  padding:4px 12px;
   border-radius:20px;
   font-size:12px;
+  margin-bottom:10px;
 }
-.ready{background:#e6fff3;color:#007a3d}
-.notready{background:#ffecec;color:#b00020}
+.ready { background:#e6fff0; color:#007a3d; }
+.not-ready { background:#ffecec; color:#b00020; }
 
-.progress{
-  display:flex;
-  gap:16px;
-  align-items:center;
-  margin:14px 0;
+.tabs { display:flex; gap:14px; margin:14px 0; }
+.tab {
+  background:none; border:none; font-weight:600;
+  cursor:pointer; color:#555;
 }
-svg{width:80px;height:80px}
-circle{fill:none;stroke-width:8}
-.bg{stroke:#eee}
-.fg{stroke:#6366f1;stroke-linecap:round}
-button{
-  padding:8px 14px;
-  border-radius:8px;
-  border:1px solid #ccc;
-  background:#fff;
-  cursor:pointer;
-}
-button.primary{
-  background:#2563eb;
-  color:#fff;
-  border:none;
-}
-
-/* MODAL */
-.modal{
-  display:none;
-  position:fixed;
-  inset:0;
-  background:rgba(0,0,0,.5);
-  padding:40px;
-  z-index:999;
-}
-.modal-box{
-  background:#fff;
-  border-radius:14px;
-  padding:20px;
-  max-width:1100px;
-  margin:auto;
-  max-height:85vh;
-  overflow:auto;
-}
-.tabs{
-  display:flex;
-  gap:14px;
-  margin-top:10px;
-}
-.tab{
-  cursor:pointer;
-  font-weight:bold;
-  color:#666;
-}
-.tab.active{
+.tab.active {
   color:#2563eb;
   border-bottom:2px solid #2563eb;
 }
-table{
-  width:100%;
-  border-collapse:collapse;
-  margin-top:10px;
+
+.meta p { font-size:14px; margin:4px 0; }
+
+.progress-ring {
+  width:70px; height:70px;
+  border-radius:50%;
+  background:
+    conic-gradient(#2563eb var(--p), #e5e7eb 0);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-weight:bold;
+  margin-bottom:10px;
 }
-th,td{
-  border:1px solid #ddd;
-  padding:8px;
+
+.area {
+  margin-top:12px;
+  border-top:1px solid #eee;
+  padding-top:8px;
+}
+.area h4 { margin:6px 0; }
+
+.item {
+  display:flex;
+  justify-content:space-between;
   font-size:13px;
+  padding:6px 0;
+  border-bottom:1px dashed #eee;
 }
-th{background:#f1f5f9}
-input,select{
-  padding:6px;
-  width:100%;
+.item button {
+  font-size:12px;
+  padding:2px 8px;
+  cursor:pointer;
 }
 </style>
 </head>
@@ -111,146 +86,115 @@ input,select{
 <h1>📘 PPKPK – Programme Accreditation Dashboard</h1>
 <div id="grid" class="grid"></div>
 
-<!-- MODAL -->
-<div id="modal" class="modal">
-  <div class="modal-box">
-    <h2 id="mTitle"></h2>
-
-    <div class="tabs">
-      <div class="tab active" onclick="showTab('info')">Overview</div>
-      <div class="tab" onclick="showTab('students')">Students</div>
-      <div class="tab" onclick="showTab('coppa')">COPPA / SRR</div>
-    </div>
-
-    <div id="info"></div>
-    <div id="students" style="display:none"></div>
-    <div id="coppa" style="display:none"></div>
-
-    <br>
-    <button onclick="closeModal()">Close</button>
-  </div>
-</div>
-
 <script>
-const STUDENT_API="https://script.google.com/macros/s/AKfycbzveYXbtD0_WdOmaX5pXapE4mBZoT9lsMlLSi7nM8iGyErZ69WjJKRoBre9Wy6MTjXbkg/exec";
-const APPENDIX_API="https://script.google.com/macros/s/AKfycbzzfNBLau1GPNucFLHvLUc_78B5M21SbE2AYYzbIA6QOLucZ8KDHQeAtM01U90V3kPvSw/exec";
+const STUDENT_API =
+"https://script.google.com/macros/s/AKfycbzveYXbtD0_WdOmaX5pXapE4mBZoT9lsMlLSi7nM8iGyErZ69WjJKRoBre9Wy6MTjXbkg/exec";
 
-let appendix=[],students=[];
+const APPENDIX_API =
+"https://script.google.com/macros/s/AKfycbzzfNBLau1GPNucFLHvLUc_78B5M21SbE2AYYzbIA6QOLucZ8KDHQeAtM01U90V3kPvSw/exec";
 
-async function load(){
-  appendix=await (await fetch(APPENDIX_API)).json();
-  students=await (await fetch(STUDENT_API)).json();
+async function loadDashboard() {
+  const students = await fetch(STUDENT_API).then(r=>r.json());
+  const appendix = await fetch(APPENDIX_API).then(r=>r.json());
 
-  const programs={};
+  const programs = {};
 
-  appendix.forEach(a=>{
-    const p=a["ACADEMIC PROGRAM"];
+  students.forEach(r=>{
+    const p = r["ACADEMIC PROGRAM"];
     if(!p) return;
-    if(!programs[p]) programs[p]={total:0,done:0};
-    programs[p].total++;
-    if(a.STATUS==="COMPLETE") programs[p].done++;
+
+    if(!programs[p]) {
+      programs[p] = {
+        name:p,
+        bm:r["PROGRAM AKADEMIK"],
+        mqr:r["NO MQR"],
+        centre:r["PEMILIK PROGRAM"],
+        nec:r["NEC"],
+        ketua:r["KETUA PROGRAM"],
+        team:new Set(),
+        students:[],
+        appendix:[]
+      };
+    }
+
+    programs[p].students.push(r);
+    if(r["PENYELIA UTAMA"] && r["PENYELIA UTAMA"]!==r["KETUA PROGRAM"])
+      programs[p].team.add(r["PENYELIA UTAMA"]);
   });
 
+  appendix.forEach(a=>{
+    const p = a["ACADEMIC PROGRAM"];
+    if(programs[p]) programs[p].appendix.push(a);
+  });
+
+  render(programs);
+}
+
+function render(programs){
   const grid=document.getElementById("grid");
   grid.innerHTML="";
 
-  Object.entries(programs).forEach(([name,p])=>{
-    const percent=Math.round((p.done/p.total)*100)||0;
-    const ready=percent===100;
-    const r=34,c=2*Math.PI*r,off=c-(percent/100)*c;
+  Object.values(programs).forEach(p=>{
+    const total=p.appendix.length;
+    const done=p.appendix.filter(x=>x.STATUS==="COMPLETE").length;
+    const percent= total?Math.round(done/total*100):0;
 
-    grid.innerHTML+=`
-      <div class="card">
-        <h3>${name}</h3>
-        <span class="badge ${ready?"ready":"notready"}">${ready?"READY":"NOT READY"}</span>
+    const card=document.createElement("div");
+    card.className="card";
 
-        <div class="progress">
-          <svg viewBox="0 0 100 100">
-            <circle class="bg" cx="50" cy="50" r="${r}"/>
-            <circle class="fg" cx="50" cy="50" r="${r}"
-              stroke-dasharray="${c}"
-              stroke-dashoffset="${off}"
-              transform="rotate(-90 50 50)"/>
-          </svg>
-          <div>
-            <b>${percent}% Complete</b><br>
-            ${p.done} / ${p.total} appendix
+    card.innerHTML=`
+      <h3>${p.name}</h3>
+      <div>${p.bm||""}</div>
+      <span class="badge ${percent===100?'ready':'not-ready'}">
+        ${percent===100?'READY':'NOT READY'}
+      </span>
+
+      <div class="progress-ring" style="--p:${percent}%">
+        ${percent}%
+      </div>
+
+      <div class="tabs">
+        <button class="tab active">Overview</button>
+        <button class="tab">COPPA / SRR</button>
+        <button class="tab">Students</button>
+      </div>
+
+      <div class="meta">
+        <p><b>MQR:</b> ${p.mqr||"-"}</p>
+        <p><b>Centre:</b> ${p.centre||"-"}</p>
+        <p><b>NEC:</b> ${p.nec||"-"}</p>
+        <p><b>Ketua:</b> ${p.ketua||"-"}</p>
+        <p><b>Team:</b> ${[...p.team].join(", ")||"-"}</p>
+      </div>
+
+      <div class="area">
+        <h4>COPPA / SRR Checklist</h4>
+        ${p.appendix.map(a=>`
+          <div class="item">
+            <span>${a["NO APPENDIX"]} – ${a.ITEM}</span>
+            <button onclick="updateStatus('${a["NO APPENDIX"]}',
+              '${a.STATUS==="COMPLETE"?"NOT STARTED":"COMPLETE"}')">
+              ${a.STATUS}
+            </button>
           </div>
-        </div>
+        `).join("")}
+      </div>
+    `;
 
-        <button class="primary" onclick="openProgram('${name}')">
-          View Programme Dashboard
-        </button>
-      </div>`;
+    grid.appendChild(card);
   });
 }
 
-function openProgram(name){
-  document.getElementById("modal").style.display="block";
-  document.getElementById("mTitle").innerText=name;
-
-  const s=students.filter(x=>x["PROGRAM AKADEMIK"]===name);
-  const a=appendix.filter(x=>x["ACADEMIC PROGRAM"]===name);
-
-  document.getElementById("info").innerHTML=`
-    <p><b>Total Students:</b> ${s.length}</p>
-    <p><b>Appendix:</b> ${a.length}</p>`;
-
-  document.getElementById("students").innerHTML=`
-    <table>
-      <tr><th>No Matrik</th><th>Name</th><th>Status</th></tr>
-      ${s.map(x=>`
-        <tr>
-          <td>${x["NO MATRIK"]||""}</td>
-          <td>${x["NAMA PELAJAR"]||""}</td>
-          <td>${x["STATUS PENGAJIAN"]||""}</td>
-        </tr>`).join("")}
-    </table>`;
-
-  document.getElementById("coppa").innerHTML=`
-    <table>
-      <tr><th>Appendix</th><th>Item</th><th>Status</th><th>Link</th><th>Save</th></tr>
-      ${a.map(x=>`
-        <tr>
-          <td>${x["NO APPENDIX"]}</td>
-          <td>${x.ITEM}</td>
-          <td>
-            <select id="s_${x["NO APPENDIX"]}">
-              ${["NOT STARTED","IN PROGRESS","COMPLETE"].map(v=>
-                `<option ${x.STATUS===v?"selected":""}>${v}</option>`).join("")}
-            </select>
-          </td>
-          <td><input id="l_${x["NO APPENDIX"]}" value="${x.DOC_LINK||""}"></td>
-          <td>
-            <button onclick="save('${x["NO APPENDIX"]}')">Save</button>
-          </td>
-        </tr>`).join("")}
-    </table>`;
-}
-
-async function save(id){
+async function updateStatus(no,status){
   await fetch(APPENDIX_API,{
     method:"POST",
-    body:JSON.stringify({
-      appendix:id,
-      status:document.getElementById("s_"+id).value,
-      doc_link:document.getElementById("l_"+id).value
-    })
+    body:JSON.stringify({ appendix:no, status })
   });
-  alert("Updated");
-  load();
+  loadDashboard();
 }
 
-function showTab(t){
-  ["info","students","coppa"].forEach(x=>{
-    document.getElementById(x).style.display=x===t?"block":"none";
-  });
-  document.querySelectorAll(".tab").forEach(el=>el.classList.remove("active"));
-  event.target.classList.add("active");
-}
-function closeModal(){document.getElementById("modal").style.display="none"}
-
-load();
+loadDashboard();
 </script>
+
 </body>
 </html>
