@@ -288,28 +288,35 @@ function renderStudents(list){
   </table>`;
 }
 
+<script>
 /* ================= SAVE ================= */
-async function saveLink(no){
-  const link=document.getElementById("l-"+no).value.trim();
+async function save(no){
+  const input = document.getElementById("l-" + no);
+  if(!input) return alert("Input not found");
+
+  const link = input.value.trim();
+
+  if(!link){
+    alert("Please paste document link");
+    return;
+  }
 
   await fetch(APPENDIX_API, {
-  method: "POST",
-  headers: {
-    "Content-Type": "application/json"
-  },
-  body: JSON.stringify({
-    appendix: no,
-    status: link ? "COMPLETE" : "NOT STARTED",
-    doc_link: link
-  })
-});
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      appendix: no,
+      status: "COMPLETE",
+      doc_link: link
+    })
+  });
 
-  loadDashboard();
+  alert("Saved & synced with Google Sheet");
+  loadDashboard(); // refresh data without reload page
 }
 
 /* ================= INIT ================= */
 loadDashboard();
 </script>
-
-</body>
-</html>
