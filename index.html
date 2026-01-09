@@ -292,14 +292,17 @@ function renderStudents(list){
 async function saveLink(no){
   const link=document.getElementById("l-"+no).value.trim();
 
-  await fetch(APPENDIX_API,{
-    method:"POST",
-    body:JSON.stringify({
-      appendix:no,
-      status: link ? "COMPLETE" : "",
-      doc_link: link
-    })
-  });
+  await fetch(APPENDIX_API, {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json"
+  },
+  body: JSON.stringify({
+    appendix: no,
+    status: link ? "COMPLETE" : "NOT STARTED",
+    doc_link: link
+  })
+});
 
   loadDashboard();
 }
