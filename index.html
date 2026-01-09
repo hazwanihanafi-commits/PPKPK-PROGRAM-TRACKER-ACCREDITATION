@@ -45,6 +45,21 @@ h1 { margin-bottom:20px; }
   border-bottom:2px solid #2563eb;
 }
 
+  .tab-content { display:none; }
+.tab-content.show { display:block; }
+
+table {
+  width:100%;
+  border-collapse:collapse;
+  font-size:13px;
+}
+th,td {
+  border:1px solid #ddd;
+  padding:6px;
+}
+th { background:#f1f5f9; }
+
+
 .meta p { font-size:14px; margin:4px 0; }
 
 .progress-ring {
@@ -113,17 +128,25 @@ async function loadDashboard() {
         ketua:r["KETUA PROGRAM"],
         team:new Set(),
         students:[],
+        aktif:0,
+        graduan:0,
+        tangguh:0,
         appendix:[]
       };
     }
 
     programs[p].students.push(r);
+
+    if(r["STATUS PENGAJIAN"]==="AKTIF") programs[p].aktif++;
+    if(r["STATUS PENGAJIAN"]==="BERIJAZAH") programs[p].graduan++;
+    if(r["STATUS PENGAJIAN"]==="TANGGUH") programs[p].tangguh++;
+
     if(r["PENYELIA UTAMA"] && r["PENYELIA UTAMA"]!==r["KETUA PROGRAM"])
       programs[p].team.add(r["PENYELIA UTAMA"]);
   });
 
   appendix.forEach(a=>{
-    const p = a["ACADEMIC PROGRAM"];
+    const p=a["ACADEMIC PROGRAM"];
     if(programs[p]) programs[p].appendix.push(a);
   });
 
@@ -137,7 +160,7 @@ function render(programs){
   Object.values(programs).forEach(p=>{
     const total=p.appendix.length;
     const done=p.appendix.filter(x=>x.STATUS==="COMPLETE").length;
-    const percent= total?Math.round(done/total*100):0;
+    const percent=total?Math.round(done/total*100):0;
 
     const card=document.createElement("div");
     card.className="card";
@@ -149,26 +172,29 @@ function render(programs){
         ${percent===100?'READY':'NOT READY'}
       </span>
 
-      <div class="progress-ring" style="--p:${percent}%">
-        ${percent}%
-      </div>
+      <div class="progress-ring" style="--p:${percent}%">${percent}%</div>
 
       <div class="tabs">
-        <button class="tab active">Overview</button>
-        <button class="tab">COPPA / SRR</button>
-        <button class="tab">Students</button>
+        <button class="tab active" onclick="switchTab(this)">Overview</button>
+        <button class="tab" onclick="switchTab(this)">COPPA / SRR</button>
+        <button class="tab" onclick="switchTab(this)">Students</button>
       </div>
 
-      <div class="meta">
-        <p><b>MQR:</b> ${p.mqr||"-"}</p>
-        <p><b>Centre:</b> ${p.centre||"-"}</p>
-        <p><b>NEC:</b> ${p.nec||"-"}</p>
-        <p><b>Ketua:</b> ${p.ketua||"-"}</p>
+      <div class="tab-content show">
+        <p><b>MQR:</b> ${p.mqr}</p>
+        <p><b>Centre:</b> ${p.centre}</p>
+        <p><b>NEC:</b> ${p.nec}</p>
+        <p><b>Ketua:</b> ${p.ketua}</p>
         <p><b>Team:</b> ${[...p.team].join(", ")||"-"}</p>
+        <p>
+          <b>Students:</b>
+          Aktif ${p.aktif} |
+          Graduan ${p.graduan} |
+          Tangguh ${p.tangguh}
+        </p>
       </div>
 
-      <div class="area">
-        <h4>COPPA / SRR Checklist</h4>
+      <div class="tab-content">
         ${p.appendix.map(a=>`
           <div class="item">
             <span>${a["NO APPENDIX"]} – ${a.ITEM}</span>
@@ -179,10 +205,33 @@ function render(programs){
           </div>
         `).join("")}
       </div>
+
+      <div class="tab-content">
+        <table>
+          <tr><th>No Matrik</th><th>Nama</th><th>Status</th></tr>
+          ${p.students.map(s=>`
+            <tr>
+              <td>${s["NO MATRIK"]||"-"}</td>
+              <td>${s["NAMA PELAJAR"]||"-"}</td>
+              <td>${s["STATUS PENGAJIAN"]||"-"}</td>
+            </tr>
+          `).join("")}
+        </table>
+      </div>
     `;
 
     grid.appendChild(card);
   });
+}
+
+function switchTab(btn){
+  const card=btn.closest(".card");
+  card.querySelectorAll(".tab").forEach(t=>t.classList.remove("active"));
+  btn.classList.add("active");
+
+  const tabs=card.querySelectorAll(".tab-content");
+  tabs.forEach(t=>t.classList.remove("show"));
+  tabs[[...btn.parentNode.children].indexOf(btn)].classList.add("show");
 }
 
 async function updateStatus(no,status){
